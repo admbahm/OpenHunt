@@ -1,0 +1,10 @@
+database/openhunt.db
+.DS_Store
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+bin/
+openhunt
+Market-Insights/
