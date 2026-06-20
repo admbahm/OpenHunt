@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/http/cookiejar"
+	"net/url"
 	"time"
 )
 
@@ -17,9 +19,11 @@ type Client struct {
 
 // NewClient initializes a new Client with default settings.
 func NewClient() *Client {
+	jar, _ := cookiejar.New(nil)
 	return &Client{
 		httpClient: &http.Client{
 			Timeout: 15 * time.Second,
+			Jar:     jar,
 		},
 		userAgent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
 	}
@@ -27,11 +31,11 @@ func NewClient() *Client {
 
 // FetchJobs retrieves job listings for a given target company.
 func (c *Client) FetchJobs(target TargetCompany) ([]JobListing, error) {
-	url := fmt.Sprintf("https://%s.wd3.myworkdayjobs.com/wday/cxs/%s/%s/jobs", target.Tenant, target.Tenant, target.Site)
-	return c.fetchJobsAt(url)
+	targetURL := fmt.Sprintf("https://%s.wd3.myworkdayjobs.com/wday/cxs/%s/%s/jobs", target.Tenant, target.Tenant, target.Site)
+	return c.fetchJobsAt(targetURL)
 }
 
-func (c *Client) fetchJobsAt(url string) ([]JobListing, error) {
+func (c *Client) fetchJobsAt(targetURL string) ([]JobListing, error) {
 	reqPayload := WorkdayRequest{
 		AppliedFacets: make(map[string][]string),
 		Limit:         20,
@@ -44,7 +48,7 @@ func (c *Client) fetchJobsAt(url string) ([]JobListing, error) {
 		return nil, fmt.Errorf("failed to marshal request: %w", err)
 	}
 
-	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonData))
+	req, err := http.NewRequest("POST", targetURL, bytes.NewBuffer(jsonData))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
@@ -53,6 +57,17 @@ func (c *Client) fetchJobsAt(url string) ([]JobListing, error) {
 	req.Header.Set("Accept", "application/json, text/plain, */*")
 	req.Header.Set("Accept-Language", "en-US")
 	req.Header.Set("User-Agent", c.userAgent)
+
+	// Add CSRF token from cookies if available
+	if c.httpClient.Jar != nil {
+		u, _ := url.Parse(targetURL)
+		for _, cookie := range c.httpClient.Jar.Cookies(u) {
+			if cookie.Name == "CALYPSO_CSRF_TOKEN" {
+				req.Header.Set("X-Calypso-Csrf-Token", cookie.Value)
+				break
+			}
+		}
+	}
 
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
