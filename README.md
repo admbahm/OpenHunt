@@ -22,33 +22,41 @@ The system operates as a multi-stage pipeline:
 -   **Ollama**: Powering local intelligence for structured data extraction from raw text.
 -   **Markdown/Obsidian**: The delivery layer for human-readable, searchable market insights.
 
+## Documentation
+
+For more detailed guides, see:
+- [Architecture Overview](file:///Users/adam/dev/cross/OpenHunt/docs/architecture.md)
+- [Configuration Guide](file:///Users/adam/dev/cross/OpenHunt/docs/configuration.md)
+
 ## Getting Started
 
 ### Prerequisites
 
--   Go 1.25+
--   Ollama installed and running locally with the `llama3` model.
--   SQLite (handled automatically by the Go driver).
+- Go 1.25+
+- Ollama installed and running with an active model (e.g. `llama3` or `llama2`).
+- SQLite (handled automatically by the Go driver).
 
 ### Installation & Run
 
-1.  **Clone the repository**:
-    ```bash
-    git clone git@github.com:admbahm/OpenHunt.git
-    cd OpenHunt
-    ```
+1. **Clone the repository**:
+   ```bash
+   git clone https://github.com/openhunt/openhunt.git
+   cd openhunt
+   ```
 
-2.  **Setup directories**:
-    The application will automatically create the `database/` and `Market-Insights/` directories on first run.
+2. **Setup directories**:
+   The application will automatically create the `database/` and `Market-Insights/` directories on first run.
 
-3.  **Run the engine**:
-    ```bash
-    go run cmd/openhunt/main.go
-    ```
+3. **Run the engine**:
+   You can optionally configure the Ollama endpoint and model using environment variables:
+   ```bash
+   OLLAMA_API_URL="http://localhost:11434" OLLAMA_MODEL="llama3" go run cmd/openhunt/main.go
+   ```
 
-4.  **Analyze the results**:
-    Open the `Market-Insights/` folder in Obsidian to view your structured market intelligence.
+4. **Analyze the results**:
+   Open the `Market-Insights/` folder in Obsidian to view your structured market intelligence.
 
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
