@@ -3,10 +3,17 @@ package main
 import (
 	"fmt"
 	"log"
+	"sync"
 
 	"github.com/openhunt/openhunt/internal/db"
 	"github.com/openhunt/openhunt/internal/scraper"
+	"github.com/openhunt/openhunt/internal/telemetry"
 )
+
+type PipelineJob struct {
+	Company scraper.TargetCompany
+	Job     scraper.JobListing
+}
 
 func main() {
 	fmt.Println("Starting openHunt...")
@@ -20,6 +27,10 @@ func main() {
 	defer store.Close()
 
 	fmt.Printf("Database initialized at %s\n", dbPath)
+
+	// Initialize Telemetry
+	ollama := telemetry.NewOllamaClient("", "llama3")
+	vault := telemetry.NewVaultWriter("Market-Insights/@Active")
 
 	// Mock target companies
 	targets := []scraper.TargetCompany{
@@ -37,19 +48,80 @@ func main() {
 		},
 	}
 
-	// Initialize and run the scraper
-	fmt.Println("Triggering concurrent scraper test run...")
-	huntScraper := scraper.NewScraper(3) // 3 concurrent workers
+	// 1. Scrape Concurrently
+	fmt.Println("Triggering concurrent scraper...")
+	huntScraper := scraper.NewScraper(3)
 	results := huntScraper.Run(targets)
 
-	// Print results summary
+	// 2. Queue for Sequential AI Processing
+	analysisChan := make(chan PipelineJob, 100)
+	var wg sync.WaitGroup
+
+	// Start sequential AI worker
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		for pJob := range analysisChan {
+			// Check if new
+			isNew, err := store.IsJobNew(pJob.Job.JobID)
+			if err != nil {
+				log.Printf("DB error checking job %s: %v", pJob.Job.JobID, err)
+				continue
+			}
+			if !isNew {
+				continue
+			}
+
+			fmt.Printf("Analyzing new job: %s - %s\n", pJob.Company.Name, pJob.Job.Title)
+
+			// Analyze (Ollama)
+			// Note: In a real scenario, we'd fetch the full description here.
+			// For now, we pass the title as a placeholder for description.
+			analysis, err := ollama.AnalyzeJob(pJob.Job.Title)
+			if err != nil {
+				log.Printf("AI error analyzing job %s: %v", pJob.Job.JobID, err)
+				continue
+			}
+
+			// Save to DB
+			if err := store.SaveJob(pJob.Company.Name, pJob.Job, analysis); err != nil {
+				log.Printf("DB error saving job %s: %v", pJob.Job.JobID, err)
+				continue
+			}
+
+			// Export to Vault
+			if err := vault.WriteJob(pJob.Company.Name, pJob.Job, analysis); err != nil {
+				log.Printf("Vault error exporting job %s: %v", pJob.Job.JobID, err)
+				continue
+			}
+		}
+	}()
+
+	// Feed results into the analysis queue
 	for _, res := range results {
 		if res.Error != nil {
 			fmt.Printf("Error scraping %s: %v\n", res.CompanyName, res.Error)
 			continue
 		}
-		fmt.Printf("Discovered %d jobs at %s\n", len(res.Jobs), res.CompanyName)
-	}
 
-	fmt.Println("Ready to hunt.")
+		// Find the target company for context
+		var target scraper.TargetCompany
+		for _, t := range targets {
+			if t.Name == res.CompanyName {
+				target = t
+				break
+			}
+		}
+
+		for _, job := range res.Jobs {
+			analysisChan <- PipelineJob{
+				Company: target,
+				Job:     job,
+			}
+		}
+	}
+	close(analysisChan)
+	wg.Wait()
+
+	fmt.Println("Hunting completed.")
 }
