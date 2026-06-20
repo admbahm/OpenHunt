@@ -18,17 +18,20 @@ type VaultWriter struct {
 // NewVaultWriter initializes a new VaultWriter and ensures the base directory exists.
 func NewVaultWriter(baseDir string) *VaultWriter {
 	if baseDir == "" {
-		baseDir = "Market-Insights/@Active"
+		baseDir = os.Getenv("OPENHUNT_OUTPUT_DIR")
+	}
+	if baseDir == "" {
+		baseDir = "./Market-Insights"
 	}
 
-	// Ensure the base directory and @Closed exist
-	activeDir := baseDir
-	closedDir := filepath.Join(filepath.Dir(baseDir), "@Closed")
+	// Ensure the base directory and @Closed exist under the resolved base path
+	activeDir := filepath.Join(baseDir, "@Active")
+	closedDir := filepath.Join(baseDir, "@Closed")
 
-	os.MkdirAll(activeDir, 0755)
-	os.MkdirAll(closedDir, 0755)
+	_ = os.MkdirAll(activeDir, 0755)
+	_ = os.MkdirAll(closedDir, 0755)
 
-	return &VaultWriter{BaseDir: baseDir}
+	return &VaultWriter{BaseDir: activeDir}
 }
 
 // WriteJob exports a job listing and its analysis to a Markdown file.

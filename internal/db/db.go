@@ -10,7 +10,6 @@ import (
 	"github.com/openhunt/openhunt/internal/telemetry"
 
 	_ "github.com/ncruces/go-sqlite3/driver"
-	_ "github.com/ncruces/go-sqlite3/embed"
 )
 
 // Store defines the interface for database operations.
