@@ -15,11 +15,19 @@ type VaultWriter struct {
 	BaseDir string
 }
 
-// NewVaultWriter initializes a new VaultWriter.
+// NewVaultWriter initializes a new VaultWriter and ensures the base directory exists.
 func NewVaultWriter(baseDir string) *VaultWriter {
 	if baseDir == "" {
 		baseDir = "Market-Insights/@Active"
 	}
+
+	// Ensure the base directory and @Closed exist
+	activeDir := baseDir
+	closedDir := filepath.Join(filepath.Dir(baseDir), "@Closed")
+
+	os.MkdirAll(activeDir, 0755)
+	os.MkdirAll(closedDir, 0755)
+
 	return &VaultWriter{BaseDir: baseDir}
 }
 

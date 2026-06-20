@@ -5,27 +5,36 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
+	"strings"
 	"time"
 )
 
 // OllamaClient handles communication with a local Ollama instance.
 type OllamaClient struct {
-	Endpoint string
-	Model    string
-	HTTP     *http.Client
+	BaseURL string
+	Model   string
+	HTTP    *http.Client
 }
 
 // NewOllamaClient initializes a new Ollama client.
-func NewOllamaClient(endpoint, model string) *OllamaClient {
-	if endpoint == "" {
-		endpoint = "http://localhost:11434/api/generate"
+func NewOllamaClient(baseURL, model string) *OllamaClient {
+	if baseURL == "" {
+		baseURL = os.Getenv("OLLAMA_API_URL")
 	}
+	if baseURL == "" {
+		baseURL = "http://localhost:11434"
+	}
+
+	// Remove trailing slash if present for consistent path joining
+	baseURL = strings.TrimSuffix(baseURL, "/")
+
 	if model == "" {
 		model = "llama3"
 	}
 	return &OllamaClient{
-		Endpoint: endpoint,
-		Model:    model,
+		BaseURL: baseURL,
+		Model:   model,
 		HTTP: &http.Client{
 			Timeout: 60 * time.Second,
 		},
@@ -69,7 +78,8 @@ Job Description:
 		return nil, fmt.Errorf("failed to marshal request: %w", err)
 	}
 
-	resp, err := c.HTTP.Post(c.Endpoint, "application/json", bytes.NewBuffer(jsonData))
+	endpoint := c.BaseURL + "/api/generate"
+	resp, err := c.HTTP.Post(endpoint, "application/json", bytes.NewBuffer(jsonData))
 	if err != nil {
 		return nil, fmt.Errorf("ollama request failed: %w", err)
 	}

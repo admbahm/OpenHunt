@@ -73,12 +73,86 @@ func (s *SQLStore) migrate() error {
 		regulatory_gates TEXT,
 		role_type TEXT
 	);
+
+	CREATE TABLE IF NOT EXISTS target_companies (
+		name TEXT PRIMARY KEY,
+		tenant TEXT,
+		site TEXT,
+		base_url TEXT
+	);
 	`
 	_, err := s.db.Exec(schema)
 	if err != nil {
 		return fmt.Errorf("failed to execute migration: %w", err)
 	}
 	return nil
+}
+
+// SeedTargets populates the target_companies table with initial data if empty.
+func (s *SQLStore) SeedTargets() error {
+	var count int
+	err := s.db.QueryRow("SELECT COUNT(*) FROM target_companies").Scan(&count)
+	if err != nil {
+		return fmt.Errorf("failed to check target_companies count: %w", err)
+	}
+
+	if count > 0 {
+		return nil
+	}
+
+	targets := []scraper.TargetCompany{
+		{
+			Name:    "Illumina",
+			Tenant:  "illumina",
+			Site:    "illumina_external",
+			BaseURL: "https://illumina.wd3.myworkdayjobs.com/illumina_external",
+		},
+		{
+			Name:    "Dexcom",
+			Tenant:  "dexcom",
+			Site:    "dexcom_external",
+			BaseURL: "https://dexcom.wd3.myworkdayjobs.com/dexcom_external",
+		},
+	}
+
+	tx, err := s.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	stmt, err := tx.Prepare("INSERT INTO target_companies (name, tenant, site, base_url) VALUES (?, ?, ?, ?)")
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
+
+	for _, t := range targets {
+		if _, err := stmt.Exec(t.Name, t.Tenant, t.Site, t.BaseURL); err != nil {
+			return err
+		}
+	}
+
+	return tx.Commit()
+}
+
+// GetTargets retrieves all target companies from the database.
+func (s *SQLStore) GetTargets() ([]scraper.TargetCompany, error) {
+	rows, err := s.db.Query("SELECT name, tenant, site, base_url FROM target_companies")
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var targets []scraper.TargetCompany
+	for rows.Next() {
+		var t scraper.TargetCompany
+		if err := rows.Scan(&t.Name, &t.Tenant, &t.Site, &t.BaseURL); err != nil {
+			return nil, err
+		}
+		targets = append(targets, t)
+	}
+	return targets, nil
 }
 
 // IsJobNew checks if a job ID already exists in the database.
