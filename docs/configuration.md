@@ -12,7 +12,7 @@
 ### Example running with custom settings:
 
 ```bash
-OLLAMA_API_URL="http://192.168.50.88:11434" OLLAMA_MODEL="llama2:latest" go run cmd/openhunt/main.go
+OLLAMA_API_URL="http://localhost:11434" OLLAMA_MODEL="llama2:latest" go run cmd/openhunt/main.go
 ```
 
 ## Target Companies Configuration
@@ -30,7 +30,7 @@ CREATE TABLE target_companies (
 
 ### Seeding Targets
 
-Target companies are seeded automatically during initialization if the table is empty. The pre-seeded targets can be modified in [internal/db/db.go](file:///Users/adam/dev/cross/OpenHunt/internal/db/db.go#L103-L117):
+Target companies are seeded automatically during initialization if the table is empty. The pre-seeded targets can be modified in [internal/db/db.go](internal/db/db.go):
 
 - **Name**: Human-readable company name.
 - **Tenant**: Workday tenant subdomain.

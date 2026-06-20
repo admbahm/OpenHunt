@@ -41,7 +41,7 @@ func main() {
 
 	// Initialize Telemetry
 	ollama := telemetry.NewOllamaClient("", "llama3")
-	vault := telemetry.NewVaultWriter("Market-Insights/@Active")
+	vault := telemetry.NewVaultWriter("")
 
 	// 1. Scrape Concurrently
 	fmt.Println("Triggering concurrent scraper...")
@@ -74,8 +74,10 @@ func main() {
 			// For now, we pass the title as a placeholder for description.
 			analysis, err := ollama.AnalyzeJob(pJob.Job.Title)
 			if err != nil {
-				log.Printf("AI error analyzing job %s: %v", pJob.Job.JobID, err)
-				continue
+				log.Printf("AI analysis failed for job %s (falling back to empty analysis): %v", pJob.Job.JobID, err)
+				analysis = &telemetry.AnalysisResult{
+					RoleType: "Unknown",
+				}
 			}
 
 			// Save to DB

@@ -25,8 +25,8 @@ The system operates as a multi-stage pipeline:
 ## Documentation
 
 For more detailed guides, see:
-- [Architecture Overview](file:///Users/adam/dev/cross/OpenHunt/docs/architecture.md)
-- [Configuration Guide](file:///Users/adam/dev/cross/OpenHunt/docs/configuration.md)
+- [Architecture Overview](docs/architecture.md)
+- [Configuration Guide](docs/configuration.md)
 
 ## Getting Started
 
