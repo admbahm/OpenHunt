@@ -28,25 +28,20 @@ func main() {
 
 	fmt.Printf("Database initialized at %s\n", dbPath)
 
+	// Seed target companies
+	if err := store.SeedTargets(); err != nil {
+		log.Fatalf("Failed to seed target companies: %v", err)
+	}
+
+	// Fetch targets from DB
+	targets, err := store.GetTargets()
+	if err != nil {
+		log.Fatalf("Failed to fetch target companies: %v", err)
+	}
+
 	// Initialize Telemetry
 	ollama := telemetry.NewOllamaClient("", "llama3")
 	vault := telemetry.NewVaultWriter("Market-Insights/@Active")
-
-	// Mock target companies
-	targets := []scraper.TargetCompany{
-		{
-			Name:    "Illumina",
-			Tenant:  "illumina",
-			Site:    "illumina_external",
-			BaseURL: "https://illumina.wd3.myworkdayjobs.com/illumina_external",
-		},
-		{
-			Name:    "Dexcom",
-			Tenant:  "dexcom",
-			Site:    "dexcom_external",
-			BaseURL: "https://dexcom.wd3.myworkdayjobs.com/dexcom_external",
-		},
-	}
 
 	// 1. Scrape Concurrently
 	fmt.Println("Triggering concurrent scraper...")
