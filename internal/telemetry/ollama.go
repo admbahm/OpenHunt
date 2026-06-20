@@ -29,6 +29,9 @@ func NewOllamaClient(baseURL, model string) *OllamaClient {
 	// Remove trailing slash if present for consistent path joining
 	baseURL = strings.TrimSuffix(baseURL, "/")
 
+	if envModel := os.Getenv("OLLAMA_MODEL"); envModel != "" {
+		model = envModel
+	}
 	if model == "" {
 		model = "llama3"
 	}

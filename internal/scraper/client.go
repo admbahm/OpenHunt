@@ -4,7 +4,10 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
+	"net/http/cookiejar"
+	"net/url"
 	"time"
 )
 
@@ -16,9 +19,11 @@ type Client struct {
 
 // NewClient initializes a new Client with default settings.
 func NewClient() *Client {
+	jar, _ := cookiejar.New(nil)
 	return &Client{
 		httpClient: &http.Client{
 			Timeout: 15 * time.Second,
+			Jar:     jar,
 		},
 		userAgent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
 	}
@@ -26,8 +31,37 @@ func NewClient() *Client {
 
 // FetchJobs retrieves job listings for a given target company.
 func (c *Client) FetchJobs(target TargetCompany) ([]JobListing, error) {
-	url := fmt.Sprintf("https://%s.wd3.myworkdayjobs.com/wday/cxs/%s/%s/jobs", target.Tenant, target.Tenant, target.Site)
+	// First, perform a GET request on the main landing page to harvest session cookies/CSRF token.
+	req, err := http.NewRequest("GET", target.BaseURL, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create token harvest request: %w", err)
+	}
 
+	req.Header.Set("User-Agent", c.userAgent)
+	req.Header.Set("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8")
+	req.Header.Set("Accept-Language", "en-US,en;q=0.9")
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("token harvest request failed: %w", err)
+	}
+	resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("token harvest request returned bad status code: %d", resp.StatusCode)
+	}
+
+	u, err := url.Parse(target.BaseURL)
+	if err != nil {
+		return nil, fmt.Errorf("invalid base URL: %w", err)
+	}
+
+	targetURL := fmt.Sprintf("%s://%s/wday/cxs/%s/%s/jobs", u.Scheme, u.Host, target.Tenant, target.Site)
+	return c.fetchJobsAt(targetURL)
+}
+
+
+func (c *Client) fetchJobsAt(targetURL string) ([]JobListing, error) {
 	reqPayload := WorkdayRequest{
 		AppliedFacets: make(map[string][]string),
 		Limit:         20,
@@ -40,14 +74,26 @@ func (c *Client) FetchJobs(target TargetCompany) ([]JobListing, error) {
 		return nil, fmt.Errorf("failed to marshal request: %w", err)
 	}
 
-	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonData))
+	req, err := http.NewRequest("POST", targetURL, bytes.NewBuffer(jsonData))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
 
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "application/json, text/plain, */*")
+	req.Header.Set("Accept-Language", "en-US")
 	req.Header.Set("User-Agent", c.userAgent)
-	req.Header.Set("Accept", "application/json")
+
+	// Add CSRF token from cookies if available
+	if c.httpClient.Jar != nil {
+		u, _ := url.Parse(targetURL)
+		for _, cookie := range c.httpClient.Jar.Cookies(u) {
+			if cookie.Name == "CALYPSO_CSRF_TOKEN" {
+				req.Header.Set("X-Calypso-Csrf-Token", cookie.Value)
+				break
+			}
+		}
+	}
 
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
@@ -56,6 +102,8 @@ func (c *Client) FetchJobs(target TargetCompany) ([]JobListing, error) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		fmt.Printf("Workday Error Body: %s\n", string(body))
 		return nil, fmt.Errorf("bad status code: %d", resp.StatusCode)
 	}
 

@@ -104,14 +104,14 @@ func (s *SQLStore) SeedTargets() error {
 		{
 			Name:    "Illumina",
 			Tenant:  "illumina",
-			Site:    "illumina_external",
-			BaseURL: "https://illumina.wd3.myworkdayjobs.com/illumina_external",
+			Site:    "illumina-careers",
+			BaseURL: "https://illumina.wd1.myworkdayjobs.com/en-US/illumina-careers/",
 		},
 		{
 			Name:    "Dexcom",
 			Tenant:  "dexcom",
-			Site:    "dexcom_external",
-			BaseURL: "https://dexcom.wd3.myworkdayjobs.com/dexcom_external",
+			Site:    "Dexcom",
+			BaseURL: "https://dexcom.wd1.myworkdayjobs.com/Dexcom/",
 		},
 	}
 
