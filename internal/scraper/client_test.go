@@ -27,14 +27,11 @@ func TestClient_FetchJobs_RequestStructure(t *testing.T) {
 				"X-Calypso-Csrf-Token": "mock-token",
 			}
 
-			// First request won't have the token because it hasn't received the cookie yet.
-			// But since we are testing stateful behavior, we should probably do a GET first.
-			// In our current implementation, we just set it if we have it.
-			if r.Header.Get("X-Calypso-Csrf-Token") != "" {
-				for k, v := range expectedHeaders {
-					if r.Header.Get(k) != v {
-						t.Errorf("Expected header %s: %s, got: %s", k, v, r.Header.Get(k))
-					}
+			// We now expect the X-Calypso-Csrf-Token to ALWAYS be present on POST,
+			// because FetchJobs performs the harvesting GET request first.
+			for k, v := range expectedHeaders {
+				if r.Header.Get(k) != v {
+					t.Errorf("Expected header %s: %s, got: %s", k, v, r.Header.Get(k))
 				}
 			}
 
@@ -71,15 +68,18 @@ func TestClient_FetchJobs_RequestStructure(t *testing.T) {
 	}))
 	defer server.Close()
 
-	// Create client and override URL
+	// Create client
 	client := NewClient()
 
-	// First call to get the cookie
-	client.fetchJobsAt(server.URL)
+	target := TargetCompany{
+		Name:    "TestCompany",
+		Tenant:  "testtenant",
+		Site:    "testsite",
+		BaseURL: server.URL,
+	}
 
-	// Second call should have the X-Calypso-Csrf-Token header
-	_, err := client.fetchJobsAt(server.URL)
+	_, err := client.FetchJobs(target)
 	if err != nil {
-		t.Fatalf("fetchJobsAt failed: %v", err)
+		t.Fatalf("FetchJobs failed: %v", err)
 	}
 }
