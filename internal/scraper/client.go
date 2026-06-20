@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"time"
 )
@@ -27,7 +28,10 @@ func NewClient() *Client {
 // FetchJobs retrieves job listings for a given target company.
 func (c *Client) FetchJobs(target TargetCompany) ([]JobListing, error) {
 	url := fmt.Sprintf("https://%s.wd3.myworkdayjobs.com/wday/cxs/%s/%s/jobs", target.Tenant, target.Tenant, target.Site)
+	return c.fetchJobsAt(url)
+}
 
+func (c *Client) fetchJobsAt(url string) ([]JobListing, error) {
 	reqPayload := WorkdayRequest{
 		AppliedFacets: make(map[string][]string),
 		Limit:         20,
@@ -46,8 +50,9 @@ func (c *Client) FetchJobs(target TargetCompany) ([]JobListing, error) {
 	}
 
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "application/json, text/plain, */*")
+	req.Header.Set("Accept-Language", "en-US")
 	req.Header.Set("User-Agent", c.userAgent)
-	req.Header.Set("Accept", "application/json")
 
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
@@ -56,6 +61,8 @@ func (c *Client) FetchJobs(target TargetCompany) ([]JobListing, error) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		fmt.Printf("Workday Error Body: %s\n", string(body))
 		return nil, fmt.Errorf("bad status code: %d", resp.StatusCode)
 	}
 
