@@ -63,17 +63,127 @@ func (c *WorkdayScraper) FetchJobs(target TargetCompany) ([]JobListing, error) {
 	return c.fetchJobsAt(targetURL, target.Category, target.Country, target.Location)
 }
 
+// resolveFacetID attempts to find the internal Workday ID for a given descriptor in a specific facet parameter.
+func (c *WorkdayScraper) resolveFacetID(targetURL, facetParam, descriptor string) (string, error) {
+	if descriptor == "" || descriptor == "All" {
+		return "", nil
+	}
+
+	// Fetch all facets with 1 result limit to minimize data transfer
+	reqPayload := WorkdayRequest{
+		AppliedFacets: make(map[string][]string),
+		Limit:         1,
+		Offset:        0,
+		SearchText:    "",
+	}
+	jsonData, _ := json.Marshal(reqPayload)
+	req, _ := http.NewRequest("POST", targetURL, bytes.NewBuffer(jsonData))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("User-Agent", c.userAgent)
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("facet resolution failed with status: %d", resp.StatusCode)
+	}
+
+	var workdayResp struct {
+		Facets []struct {
+			FacetParameter string `json:"facetParameter"`
+			Values         []struct {
+				Descriptor string `json:"descriptor"`
+				ID         string `json:"id"`
+				Values     []struct {
+					Descriptor string `json:"descriptor"`
+					ID         string `json:"id"`
+					Values     []struct {
+						Descriptor string `json:"descriptor"`
+						ID         string `json:"id"`
+					} `json:"values"`
+				} `json:"values"`
+			} `json:"values"`
+		} `json:"facets"`
+	}
+
+	if err := json.NewDecoder(resp.Body).Decode(&workdayResp); err != nil {
+		return "", err
+	}
+
+	// Search for the descriptor in the specified facet parameter (supporting 3 levels of nesting)
+	for _, facet := range workdayResp.Facets {
+		// Some tenants nest locations under locationMainGroup
+		isLocationFacet := facet.FacetParameter == "locations" || facet.FacetParameter == "locationHierarchy1" || facet.FacetParameter == "locationCountry" || facet.FacetParameter == "locationMainGroup"
+		isCategoryFacet := facet.FacetParameter == "jobFamilyGroup" || facet.FacetParameter == "functionalCategory"
+
+		if (facetParam == "jobFamilyGroup" && isCategoryFacet) || (facetParam == "locations" && isLocationFacet) {
+			for _, v := range facet.Values {
+				if v.Descriptor == descriptor {
+					return v.ID, nil
+				}
+				for _, v2 := range v.Values {
+					if v2.Descriptor == descriptor {
+						return v2.ID, nil
+					}
+					for _, v3 := range v2.Values {
+						if v3.Descriptor == descriptor {
+							return v3.ID, nil
+						}
+					}
+				}
+			}
+		}
+	}
+
+	return "", fmt.Errorf("descriptor '%s' not found in facet '%s'", descriptor, facetParam)
+}
+
 func (c *WorkdayScraper) fetchJobsAt(targetURL string, category, country, location string) ([]JobListing, error) {
 	appliedFacets := make(map[string][]string)
+
+	// Resolve Category ID
 	if category != "" && category != "All" {
-		appliedFacets["jobFamilyGroup"] = []string{category}
+		id, err := c.resolveFacetID(targetURL, "jobFamilyGroup", category)
+		if err == nil && id != "" {
+			appliedFacets["jobFamilyGroup"] = []string{id}
+		} else {
+			// Fallback to descriptor if ID resolution fails (some tenants might accept it)
+			appliedFacets["jobFamilyGroup"] = []string{category}
+		}
 	}
+
+	// Resolve Country ID
 	if country != "" && country != "All" {
-		// Use 'locations' for country filter as well, as Workday often groups them
-		appliedFacets["locations"] = append(appliedFacets["locations"], country)
+		id, err := c.resolveFacetID(targetURL, "locations", country)
+		if err == nil && id != "" {
+			appliedFacets["locations"] = append(appliedFacets["locations"], id)
+		} else {
+			appliedFacets["locations"] = append(appliedFacets["locations"], country)
+		}
 	}
+
+	// Resolve Location ID
 	if location != "" && location != "All" {
-		appliedFacets["locations"] = append(appliedFacets["locations"], location)
+		id, err := c.resolveFacetID(targetURL, "locations", location)
+		if err == nil && id != "" {
+			// Avoid duplicate IDs if country and location resolve to the same thing
+			exists := false
+			for _, existingID := range appliedFacets["locations"] {
+				if existingID == id {
+					exists = true
+					break
+				}
+			}
+			if !exists {
+				appliedFacets["locations"] = append(appliedFacets["locations"], id)
+			}
+		} else {
+			appliedFacets["locations"] = append(appliedFacets["locations"], location)
+		}
 	}
 
 	reqPayload := WorkdayRequest{
