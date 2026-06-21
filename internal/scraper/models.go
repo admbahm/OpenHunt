@@ -9,6 +9,9 @@ type TargetCompany struct {
 	Site     string `db:"site"`     // Note: This will be empty for Greenhouse/Lever
 	BaseURL  string `db:"base_url"` // Main landing page
 	Platform string `db:"platform"` // 'workday', 'greenhouse', 'lever', etc.
+	Category string `db:"-"`        // Runtime filter
+	Country  string `db:"-"`        // Runtime filter
+	Location string `db:"-"`        // Runtime filter
 }
 
 // JobListing standardizes data across all ATS vendors for the SQLite diff engine
