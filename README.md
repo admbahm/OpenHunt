@@ -4,13 +4,13 @@ openHunt is a sovereign, local-first market intelligence engine designed to coun
 
 ## Project Overview
 
-In an era of automated HR filters and asymmetric information, openHunt provides the tools to build your own market intelligence. It targets Workday CXS endpoints, processes the data through a local SQLite diff engine, and leverages local LLMs (via Ollama) to extract structured insights without leaking data to third-party providers.
+In an era of automated HR filters and asymmetric information, openHunt provides the tools to build your own market intelligence. It targets Workday CXS and Greenhouse job-board APIs, processes the data through a local SQLite diff engine, and leverages local LLMs (via Ollama) to extract structured insights without leaking data to third-party providers.
 
 ## Architecture
 
 The system operates as a multi-stage pipeline:
 
-1.  **Concurrent Scraper**: A high-performance Go-based worker pool that targets Workday CXS API endpoints for multiple companies simultaneously.
+1.  **Concurrent Scraper**: A high-performance Go worker pool dispatches each target to its Workday or Greenhouse backend and processes multiple companies simultaneously.
 2.  **SQLite Diff Engine**: A local database layer that identifies new job listings by comparing incoming data against historical records, ensuring only fresh insights are processed.
 3.  **Sequential AI Pipeline**: A single-threaded queue that passes new job descriptions to a local **Ollama** instance. This stage extracts structured data (salary ranges, tech stack, regulatory requirements) using models like `llama3`.
 4.  **Obsidian Vault Export**: The final intelligence is exported as atomic Markdown files with YAML frontmatter, ready for deep analysis and indexing within an **Obsidian** vault.
@@ -59,4 +59,3 @@ For more detailed guides, see:
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-

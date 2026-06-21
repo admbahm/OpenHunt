@@ -1,5 +1,7 @@
 # Technical Design: Workday Scraper Pagination
 
+> **Status**: Implemented and verified as of 2026-06-21. The production implementation uses 20-result pages and randomized 200–500ms delays.
+
 ## 1. System Context & Data Flow
 The Workday scraper client is defined in `internal/scraper/client.go`. It sends a POST request with a JSON payload to the Calypso CXS endpoint.
 
@@ -14,7 +16,7 @@ sequenceDiagram
     Workday API-->>Scraper: Set Cookies (CALYPSO_CSRF_TOKEN)
     
     loop Page Ingestion
-        Scraper->>Workday API: POST /jobs (offset, limit=100)
+        Scraper->>Workday API: POST /jobs (offset, limit=20)
         Workday API-->>Scraper: Response (jobPostings, total)
         Note over Scraper: Append jobPostings
     end
@@ -29,7 +31,7 @@ sequenceDiagram
 Modify `FetchJobs` and `fetchJobsAt` to loop and collect results:
 - Modify `fetchJobsAt(targetURL string)` to return a list of `JobListing` and an `error`.
 - Convert `fetchJobsAt` into an iterative paging process.
-- Set payload limit to `100`.
+- Set the payload limit to `20`, matching the implemented and verified Workday request behavior.
 - Maintain a local slice `allJobs []JobListing`.
 - Loop until `len(allJobs) >= total` or the API returns an empty `jobPostings` slice.
 - Respect rate limiting by adding a sleep parameter (e.g., `time.Sleep(500 * time.Millisecond)`) between requests if paginating.
@@ -38,7 +40,7 @@ Modify `FetchJobs` and `fetchJobsAt` to loop and collect results:
 ```go
 func (c *WorkdayScraper) fetchJobsAt(targetURL string) ([]JobListing, error) {
 	var allJobs []JobListing
-	limit := 100
+	limit := 20
 	offset := 0
 
 	for {
@@ -84,7 +86,7 @@ func (c *WorkdayScraper) fetchJobsAt(targetURL string) ([]JobListing, error) {
 		offset += limit
 		
 		// Polite scraping delay
-		time.Sleep(250 * time.Millisecond)
+		time.Sleep(time.Duration(200+rand.Intn(300)) * time.Millisecond)
 	}
 
 	return allJobs, nil

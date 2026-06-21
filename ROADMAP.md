@@ -4,9 +4,9 @@ This roadmap outlines the planned enhancements and feature additions to openHunt
 
 ## Core Scraper & Engine Enhancements
 
-### [ ] Workday Scraper Pagination (High Priority)
-- **Problem**: The current Workday scraper only requests `Offset: 0` and `Limit: 20` once, retrieving only the first 20 jobs. This causes it to miss older or lower-ranked postings for high-volume companies like Illumina.
-- **Solution**: Implement a pagination loop utilizing the `total` field in the Workday response, stepping through search results page-by-page.
+### [x] Workday Scraper Pagination
+- **Status**: Completed. The scraper follows the Workday response `total`, requests pages in 20-result increments, and preserves all successfully fetched pages.
+- **Rate limiting**: A randomized 200–500ms delay is applied between page requests, with per-page progress logging.
 - **Reference**: See [PRD](docs/prd_pagination.md) and [Technical Design](docs/tech_design_pagination.md).
 
 ### [ ] CLI Ingestion & Manual Override Improvements

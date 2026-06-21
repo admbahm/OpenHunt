@@ -3,19 +3,18 @@ package tui
 import (
 	"fmt"
 	"io"
-	"strings"
 
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 )
 
-var (
-	docStyle          = lipgloss.NewStyle().Margin(1, 2)
-	focusedStyle      = lipgloss.NewStyle().Border(lipgloss.NormalBorder()).BorderForeground(lipgloss.Color("205"))
-	unfocusedStyle    = lipgloss.NewStyle().Border(lipgloss.NormalBorder()).BorderForeground(lipgloss.Color("240"))
-	selectedItemStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("205")).Bold(true)
-)
+const openHuntBanner = `  ___                   _   _             _
+ / _ \ _ __   ___ _ __ | | | |_   _ _ __ | |_
+| | | | '_ \ / _ \ '_ \| |_| | | | | '_ \| __|
+| |_| | |_) |  __/ | | |  _  | |_| | | | | |_
+ \___/| .__/ \___|_| |_|_| |_|\__,_|_| |_|\__|
+      |_|`
 
 type item string
 
@@ -32,25 +31,21 @@ func (d itemDelegate) Render(w io.Writer, m list.Model, index int, listItem list
 		return
 	}
 
-	str := fmt.Sprintf("%d. %s", index+1, i)
-
-	fn := func(s ...string) string {
-		return lipgloss.NewStyle().PaddingLeft(2).Render(s...)
-	}
+	label := subtleStyle.Render("  " + string(i))
 	if index == m.Index() {
-		fn = func(s ...string) string {
-			return selectedItemStyle.Render("> " + strings.Join(s, " "))
-		}
+		label = selectedItemStyle.Render("● " + string(i))
 	}
-
-	fmt.Fprint(w, fn(str))
+	fmt.Fprint(w, label)
 }
 
 type Model struct {
-	categories      list.Model
-	countries       list.Model
-	locations       list.Model
-	focused         int // 0 for categories, 1 for countries, 2 for locations
+	categories list.Model
+	countries  list.Model
+	locations  list.Model
+	focused    int
+	width      int
+	height     int
+
 	SelectedCat     string
 	SelectedCountry string
 	SelectedLoc     string
@@ -59,50 +54,39 @@ type Model struct {
 }
 
 func NewModel(cats, countries, locs []string) Model {
-	catItems := make([]list.Item, len(cats))
-	for i, c := range cats {
-		catItems[i] = item(c)
-	}
-
-	countryItems := make([]list.Item, len(countries))
-	for i, c := range countries {
-		countryItems[i] = item(c)
-	}
-
-	locItems := make([]list.Item, len(locs))
-	for i, l := range locs {
-		locItems[i] = item(l)
-	}
-
-	cList := list.New(catItems, itemDelegate{}, 20, 10)
-	cList.Title = "Functional Category"
-	cList.SetShowHelp(false)
-	cList.SetShowStatusBar(false)
-	cList.SetFilteringEnabled(false)
-
-	coList := list.New(countryItems, itemDelegate{}, 20, 10)
-	coList.Title = "Country"
-	coList.SetShowHelp(false)
-	coList.SetShowStatusBar(false)
-	coList.SetFilteringEnabled(false)
-
-	lList := list.New(locItems, itemDelegate{}, 20, 10)
-	lList.Title = "Geographic Location"
-	lList.SetShowHelp(false)
-	lList.SetShowStatusBar(false)
-	lList.SetFilteringEnabled(false)
-
 	return Model{
-		categories: cList,
-		countries:  coList,
-		locations:  lList,
-		focused:    0,
+		categories: newFilterList(cats),
+		countries:  newFilterList(countries),
+		locations:  newFilterList(locs),
+		width:      100,
+		height:     26,
 	}
 }
 
-func (m Model) Init() tea.Cmd {
-	return nil
+func newFilterList(values []string) list.Model {
+	items := make([]list.Item, len(values))
+	for i, value := range values {
+		items[i] = item(value)
+	}
+
+	model := list.New(items, itemDelegate{}, 20, 8)
+	model.SetShowTitle(false)
+	model.SetShowHelp(false)
+	model.SetShowStatusBar(false)
+	model.SetShowPagination(false)
+	model.SetFilteringEnabled(false)
+	return model
 }
+
+func selectedValue(model list.Model) string {
+	selected, ok := model.SelectedItem().(item)
+	if !ok {
+		return "None"
+	}
+	return string(selected)
+}
+
+func (m Model) Init() tea.Cmd { return nil }
 
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
@@ -114,30 +98,41 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "tab":
 			m.focused = (m.focused + 1) % 3
 			return m, nil
+		case "shift+tab":
+			m.focused = (m.focused + 2) % 3
+			return m, nil
 		case "enter":
-			m.SelectedCat = string(m.categories.SelectedItem().(item))
-			m.SelectedCountry = string(m.countries.SelectedItem().(item))
-			m.SelectedLoc = string(m.locations.SelectedItem().(item))
+			m.SelectedCat = selectedValue(m.categories)
+			m.SelectedCountry = selectedValue(m.countries)
+			m.SelectedLoc = selectedValue(m.locations)
 			m.Submitted = true
 			return m, tea.Quit
 		}
 	case tea.WindowSizeMsg:
-		h, v := docStyle.GetFrameSize()
-		m.categories.SetSize(msg.Width/3-h, msg.Height-v)
-		m.countries.SetSize(msg.Width/3-h, msg.Height-v)
-		m.locations.SetSize(msg.Width/3-h, msg.Height-v)
+		m.width = msg.Width
+		m.height = msg.Height
+		m.resizeLists()
 	}
 
 	var cmd tea.Cmd
-	if m.focused == 0 {
+	switch m.focused {
+	case 0:
 		m.categories, cmd = m.categories.Update(msg)
-	} else if m.focused == 1 {
+	case 1:
 		m.countries, cmd = m.countries.Update(msg)
-	} else {
+	default:
 		m.locations, cmd = m.locations.Update(msg)
 	}
-
 	return m, cmd
+}
+
+func (m *Model) resizeLists() {
+	innerWidth := max(66, m.width-appStyle.GetHorizontalFrameSize())
+	panelWidth := max(20, (innerWidth-4)/3)
+	listHeight := max(6, min(10, m.height-18))
+	m.categories.SetSize(panelWidth-4, listHeight)
+	m.countries.SetSize(panelWidth-4, listHeight)
+	m.locations.SetSize(panelWidth-4, listHeight)
 }
 
 func (m Model) View() string {
@@ -145,27 +140,87 @@ func (m Model) View() string {
 		return "Exiting...\n"
 	}
 	if m.Submitted {
-		return fmt.Sprintf("Selected Category: %s\nSelected Country: %s\nSelected Location: %s\nRunning crawl...\n", m.SelectedCat, m.SelectedCountry, m.SelectedLoc)
+		return fmt.Sprintf(
+			"Starting hunt: %s • %s • %s\n",
+			m.SelectedCat,
+			m.SelectedCountry,
+			m.SelectedLoc,
+		)
 	}
 
-	catStyle := unfocusedStyle
-	countryStyle := unfocusedStyle
-	locStyle := unfocusedStyle
+	width := max(72, m.width)
+	innerWidth := width - appStyle.GetHorizontalFrameSize()
+	panelWidth := max(20, (innerWidth-4)/3)
+	panelHeight := max(8, min(12, m.height-17))
 
-	if m.focused == 0 {
-		catStyle = focusedStyle
-	} else if m.focused == 1 {
-		countryStyle = focusedStyle
-	} else {
-		locStyle = focusedStyle
-	}
-
-	return docStyle.Render(
-		lipgloss.JoinHorizontal(
-			lipgloss.Top,
-			catStyle.Render(m.categories.View()),
-			countryStyle.Render(m.countries.View()),
-			locStyle.Render(m.locations.View()),
-		),
+	header := lipgloss.JoinVertical(
+		lipgloss.Left,
+		bannerStyle.Render(openHuntBanner),
+		headerMarkStyle.Render("OpenHunt")+"  "+subtleStyle.Render("Choose filters for this crawl"),
 	)
+
+	categoryStyle, countryStyle, locationStyle := panelStyle, panelStyle, panelStyle
+	switch m.focused {
+	case 0:
+		categoryStyle = focusedPanelStyle
+	case 1:
+		countryStyle = focusedPanelStyle
+	case 2:
+		locationStyle = focusedPanelStyle
+	}
+
+	panels := lipgloss.JoinHorizontal(
+		lipgloss.Top,
+		renderPanel(categoryStyle, "01  Functional Category", m.categories.View(), panelWidth, panelHeight),
+		"  ",
+		renderPanel(countryStyle, "02  Country", m.countries.View(), panelWidth, panelHeight),
+		"  ",
+		renderPanel(locationStyle, "03  Geographic Location", m.locations.View(), panelWidth, panelHeight),
+	)
+
+	summary := summaryStyle.Width(innerWidth - 2).Render(
+		subtleStyle.Render("Selection  ") +
+			selectedItemStyle.Render(selectedValue(m.categories)) +
+			subtleStyle.Render("  •  ") +
+			selectedItemStyle.Render(selectedValue(m.countries)) +
+			subtleStyle.Render("  •  ") +
+			selectedItemStyle.Render(selectedValue(m.locations)),
+	)
+
+	help := keyStyle.Render("tab") + subtleStyle.Render(" next panel   ") +
+		keyStyle.Render("shift+tab") + subtleStyle.Render(" previous   ") +
+		keyStyle.Render("↑/↓") + subtleStyle.Render(" select   ") +
+		keyStyle.Render("enter") + subtleStyle.Render(" start crawl   ") +
+		keyStyle.Render("q") + subtleStyle.Render(" quit")
+
+	return appStyle.Render(
+		lipgloss.JoinVertical(lipgloss.Left, header, "", panels, "", summary, "", help),
+	)
+}
+
+func renderPanel(style lipgloss.Style, title, body string, width, height int) string {
+	content := lipgloss.JoinVertical(
+		lipgloss.Left,
+		panelTitleStyle.Render(title),
+		"",
+		body,
+	)
+	return style.
+		Width(width - style.GetHorizontalFrameSize()).
+		Height(height).
+		Render(content)
+}
+
+func max(a, b int) int {
+	if a > b {
+		return a
+	}
+	return b
+}
+
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
 }

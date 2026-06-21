@@ -24,7 +24,8 @@ CREATE TABLE target_companies (
     name TEXT PRIMARY KEY,
     tenant TEXT,
     site TEXT,
-    base_url TEXT
+    base_url TEXT,
+    platform TEXT DEFAULT 'workday'
 );
 ```
 
@@ -36,3 +37,6 @@ Target companies are seeded automatically during initialization if the table is 
 - **Tenant**: Workday tenant subdomain.
 - **Site**: Workday site path identifier.
 - **BaseURL**: Main public careers landing page URL used for harvesting CSRF cookies.
+- **Platform**: Scraper backend to use: `workday` or `greenhouse`.
+
+For Greenhouse targets, `tenant` is the public board token; `site` and `base_url` may be empty.
