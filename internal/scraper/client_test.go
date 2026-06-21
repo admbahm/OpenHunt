@@ -69,13 +69,14 @@ func TestClient_FetchJobs_RequestStructure(t *testing.T) {
 	defer server.Close()
 
 	// Create client
-	client := NewClient()
+	client := NewWorkdayScraper(nil)
 
 	target := TargetCompany{
-		Name:    "TestCompany",
-		Tenant:  "testtenant",
-		Site:    "testsite",
-		BaseURL: server.URL,
+		Name:     "TestCompany",
+		Tenant:   "testtenant",
+		Site:     "testsite",
+		BaseURL:  server.URL,
+		Platform: "workday",
 	}
 
 	_, err := client.FetchJobs(target)
