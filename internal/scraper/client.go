@@ -60,12 +60,22 @@ func (c *WorkdayScraper) FetchJobs(target TargetCompany) ([]JobListing, error) {
 	}
 
 	targetURL := fmt.Sprintf("%s://%s/wday/cxs/%s/%s/jobs", u.Scheme, u.Host, target.Tenant, target.Site)
-	return c.fetchJobsAt(targetURL)
+	return c.fetchJobsAt(targetURL, target.Category, target.Location)
 }
 
-func (c *WorkdayScraper) fetchJobsAt(targetURL string) ([]JobListing, error) {
+func (c *WorkdayScraper) fetchJobsAt(targetURL string, category, location string) ([]JobListing, error) {
+	appliedFacets := make(map[string][]string)
+	if category != "" && category != "All" {
+		// Workday category facet key is usually 'jobFamilyGroup' or 'functionalCategory'
+		// This varies by tenant, but 'functionalCategory' is common
+		appliedFacets["functionalCategory"] = []string{category}
+	}
+	if location != "" && location != "All" {
+		appliedFacets["locationHierarchy1"] = []string{location}
+	}
+
 	reqPayload := WorkdayRequest{
-		AppliedFacets: make(map[string][]string),
+		AppliedFacets: appliedFacets,
 		Limit:         20,
 		Offset:        0,
 		SearchText:    "",

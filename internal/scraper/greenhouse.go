@@ -25,6 +25,10 @@ type GreenhouseResponse struct {
 func (g *GreenhouseScraper) FetchJobs(target TargetCompany) ([]JobListing, error) {
 	// Greenhouse uses a singular company token/tenant name
 	endpoint := fmt.Sprintf("https://boards-api.greenhouse.io/v1/boards/%s/jobs", target.Tenant)
+	if target.Location != "" && target.Location != "All" {
+		// Greenhouse API supports location filtering via query param
+		endpoint = fmt.Sprintf("%s?location=%s", endpoint, target.Location)
+	}
 
 	req, _ := http.NewRequest("GET", endpoint, nil)
 	req.Header.Set("User-Agent", "openHunt/2.0")

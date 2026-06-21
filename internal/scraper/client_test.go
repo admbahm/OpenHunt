@@ -56,6 +56,19 @@ func TestClient_FetchJobs_RequestStructure(t *testing.T) {
 				t.Error("appliedFacets missing from request body")
 			} else if facets == nil {
 				t.Error("appliedFacets is null in request body, expected {}")
+			} else {
+				// Verify our filters are present
+				f := facets.(map[string]interface{})
+				if cat, ok := f["functionalCategory"]; !ok {
+					t.Error("functionalCategory missing from appliedFacets")
+				} else if cat.([]interface{})[0].(string) != "Engineering" {
+					t.Errorf("Expected category Engineering, got %v", cat)
+				}
+				if loc, ok := f["locationHierarchy1"]; !ok {
+					t.Error("locationHierarchy1 missing from appliedFacets")
+				} else if loc.([]interface{})[0].(string) != "San Diego, CA" {
+					t.Errorf("Expected location San Diego, CA, got %v", loc)
+				}
 			}
 		}
 
@@ -77,6 +90,8 @@ func TestClient_FetchJobs_RequestStructure(t *testing.T) {
 		Site:     "testsite",
 		BaseURL:  server.URL,
 		Platform: "workday",
+		Category: "Engineering",
+		Location: "San Diego, CA",
 	}
 
 	_, err := client.FetchJobs(target)

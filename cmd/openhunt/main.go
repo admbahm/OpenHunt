@@ -8,6 +8,9 @@ import (
 	"github.com/openhunt/openhunt/internal/db"
 	"github.com/openhunt/openhunt/internal/scraper"
 	"github.com/openhunt/openhunt/internal/telemetry"
+	"github.com/openhunt/openhunt/internal/tui"
+
+	tea "github.com/charmbracelet/bubbletea"
 )
 
 type PipelineJob struct {
@@ -26,17 +29,39 @@ func main() {
 	}
 	defer store.Close()
 
-	fmt.Printf("Database initialized at %s\n", dbPath)
-
 	// Seed target companies
 	if err := store.SeedTargets(); err != nil {
 		log.Fatalf("Failed to seed target companies: %v", err)
 	}
 
+	// TUI Selection
+	cats := []string{"All", "Engineering", "Marketing", "Sales", "Product"}
+	locs := []string{"All", "San Diego, CA", "Irvine, CA", "Remote", "San Francisco, CA"}
+	tuiModel := tui.NewModel(cats, locs)
+	p := tea.NewProgram(tuiModel)
+	finalModel, err := p.Run()
+	if err != nil {
+		log.Fatalf("TUI Error: %v", err)
+	}
+
+	m := finalModel.(tui.Model)
+	if m.Quitting || !m.Submitted {
+		fmt.Println("Selection cancelled.")
+		return
+	}
+
+	fmt.Printf("Database initialized at %s\n", dbPath)
+
 	// Fetch targets from DB
 	targets, err := store.GetTargets()
 	if err != nil {
 		log.Fatalf("Failed to fetch target companies: %v", err)
+	}
+
+	// Apply TUI filters to targets
+	for i := range targets {
+		targets[i].Category = m.SelectedCat
+		targets[i].Location = m.SelectedLoc
 	}
 
 	// Initialize Telemetry
