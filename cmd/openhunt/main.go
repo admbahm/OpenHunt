@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"log"
 	"sync"
@@ -19,6 +20,10 @@ type PipelineJob struct {
 }
 
 func main() {
+	debugFlag := flag.Bool("debug", false, "Enable debug logs")
+	flag.Parse()
+	scraper.Debug = *debugFlag
+
 	fmt.Println("Starting openHunt...")
 
 	// Initialize the database

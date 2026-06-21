@@ -13,6 +13,9 @@ type Result struct {
 	Error       error
 }
 
+// Debug enables debug logging when true
+var Debug bool
+
 // Scraper orchestrates concurrent job scraping.
 type Scraper struct {
 	httpClient  *http.Client
