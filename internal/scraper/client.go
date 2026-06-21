@@ -67,11 +67,12 @@ func (c *WorkdayScraper) fetchJobsAt(targetURL string, category, location string
 	appliedFacets := make(map[string][]string)
 	if category != "" && category != "All" {
 		// Workday category facet key is usually 'jobFamilyGroup' or 'functionalCategory'
-		// This varies by tenant, but 'functionalCategory' is common
-		appliedFacets["functionalCategory"] = []string{category}
+		// This varies by tenant, but 'jobFamilyGroup' is widely supported for internal IDs
+		appliedFacets["jobFamilyGroup"] = []string{category}
 	}
 	if location != "" && location != "All" {
-		appliedFacets["locationHierarchy1"] = []string{location}
+		// 'locations' is more reliable for direct location IDs/names than 'locationHierarchy1'
+		appliedFacets["locations"] = []string{location}
 	}
 
 	reqPayload := WorkdayRequest{

@@ -35,8 +35,8 @@ func main() {
 	}
 
 	// TUI Selection
-	cats := []string{"All", "Engineering", "Marketing", "Sales", "Product"}
-	locs := []string{"All", "San Diego, CA", "Irvine, CA", "Remote", "San Francisco, CA"}
+	cats := []string{"All", "Engineering", "Quality", "Information Technology", "Sales", "Manufacturing and Operations"}
+	locs := []string{"All", "San Diego, California", "Athenry, Ireland", "Bengaluru, India", "Penang, Malaysia", "Remote"}
 	tuiModel := tui.NewModel(cats, locs)
 	p := tea.NewProgram(tuiModel)
 	finalModel, err := p.Run()

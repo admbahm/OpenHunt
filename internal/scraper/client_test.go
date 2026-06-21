@@ -59,15 +59,15 @@ func TestClient_FetchJobs_RequestStructure(t *testing.T) {
 			} else {
 				// Verify our filters are present
 				f := facets.(map[string]interface{})
-				if cat, ok := f["functionalCategory"]; !ok {
-					t.Error("functionalCategory missing from appliedFacets")
+				if cat, ok := f["jobFamilyGroup"]; !ok {
+					t.Error("jobFamilyGroup missing from appliedFacets")
 				} else if cat.([]interface{})[0].(string) != "Engineering" {
 					t.Errorf("Expected category Engineering, got %v", cat)
 				}
-				if loc, ok := f["locationHierarchy1"]; !ok {
-					t.Error("locationHierarchy1 missing from appliedFacets")
-				} else if loc.([]interface{})[0].(string) != "San Diego, CA" {
-					t.Errorf("Expected location San Diego, CA, got %v", loc)
+				if loc, ok := f["locations"]; !ok {
+					t.Error("locations missing from appliedFacets")
+				} else if loc.([]interface{})[0].(string) != "San Diego, California" {
+					t.Errorf("Expected location San Diego, California, got %v", loc)
 				}
 			}
 		}
@@ -91,7 +91,7 @@ func TestClient_FetchJobs_RequestStructure(t *testing.T) {
 		BaseURL:  server.URL,
 		Platform: "workday",
 		Category: "Engineering",
-		Location: "San Diego, CA",
+		Location: "San Diego, California",
 	}
 
 	_, err := client.FetchJobs(target)
