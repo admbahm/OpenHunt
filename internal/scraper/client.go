@@ -11,26 +11,29 @@ import (
 	"time"
 )
 
-// Client handles communication with Workday CXS endpoints.
-type Client struct {
+// WorkdayScraper handles communication with Workday CXS endpoints.
+type WorkdayScraper struct {
 	httpClient *http.Client
 	userAgent  string
 }
 
-// NewClient initializes a new Client with default settings.
-func NewClient() *Client {
-	jar, _ := cookiejar.New(nil)
-	return &Client{
-		httpClient: &http.Client{
+// NewWorkdayScraper initializes a new WorkdayScraper with default settings.
+func NewWorkdayScraper(client *http.Client) *WorkdayScraper {
+	if client == nil {
+		jar, _ := cookiejar.New(nil)
+		client = &http.Client{
 			Timeout: 15 * time.Second,
 			Jar:     jar,
-		},
-		userAgent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+		}
+	}
+	return &WorkdayScraper{
+		httpClient: client,
+		userAgent:  "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
 	}
 }
 
 // FetchJobs retrieves job listings for a given target company.
-func (c *Client) FetchJobs(target TargetCompany) ([]JobListing, error) {
+func (c *WorkdayScraper) FetchJobs(target TargetCompany) ([]JobListing, error) {
 	// First, perform a GET request on the main landing page to harvest session cookies/CSRF token.
 	req, err := http.NewRequest("GET", target.BaseURL, nil)
 	if err != nil {
@@ -60,8 +63,7 @@ func (c *Client) FetchJobs(target TargetCompany) ([]JobListing, error) {
 	return c.fetchJobsAt(targetURL)
 }
 
-
-func (c *Client) fetchJobsAt(targetURL string) ([]JobListing, error) {
+func (c *WorkdayScraper) fetchJobsAt(targetURL string) ([]JobListing, error) {
 	reqPayload := WorkdayRequest{
 		AppliedFacets: make(map[string][]string),
 		Limit:         20,

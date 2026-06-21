@@ -2,6 +2,7 @@ package scraper
 
 import (
 	"log"
+	"net/http"
 	"sync"
 )
 
@@ -14,14 +15,14 @@ type Result struct {
 
 // Scraper orchestrates concurrent job scraping.
 type Scraper struct {
-	client      *Client
+	httpClient  *http.Client
 	workerCount int
 }
 
 // NewScraper initializes a new Scraper.
 func NewScraper(workerCount int) *Scraper {
 	return &Scraper{
-		client:      NewClient(),
+		httpClient:  nil, // Factory will handle initialization if nil
 		workerCount: workerCount,
 	}
 }
@@ -64,8 +65,13 @@ func (s *Scraper) worker(wg *sync.WaitGroup, jobs <-chan TargetCompany, results 
 	defer wg.Done()
 
 	for company := range jobs {
-		log.Printf("Scraping %s...", company.Name)
-		jobsList, err := s.client.FetchJobs(company)
+		log.Printf("Scraping %s (%s)...", company.Name, company.Platform)
+
+		scraper, err := NewScraperFactory(company.Platform, s.httpClient)
+		var jobsList []JobListing
+		if err == nil {
+			jobsList, err = scraper.FetchJobs(company)
+		}
 
 		results <- Result{
 			CompanyName: company.Name,

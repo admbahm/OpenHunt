@@ -77,7 +77,8 @@ func (s *SQLStore) migrate() error {
 		name TEXT PRIMARY KEY,
 		tenant TEXT,
 		site TEXT,
-		base_url TEXT
+		base_url TEXT,
+		platform TEXT DEFAULT 'workday'
 	);
 	`
 	_, err := s.db.Exec(schema)
@@ -101,16 +102,23 @@ func (s *SQLStore) SeedTargets() error {
 
 	targets := []scraper.TargetCompany{
 		{
-			Name:    "Illumina",
-			Tenant:  "illumina",
-			Site:    "illumina-careers",
-			BaseURL: "https://illumina.wd1.myworkdayjobs.com/en-US/illumina-careers/",
+			Name:     "Illumina",
+			Tenant:   "illumina",
+			Site:     "illumina-careers",
+			BaseURL:  "https://illumina.wd1.myworkdayjobs.com/en-US/illumina-careers/",
+			Platform: "workday",
 		},
 		{
-			Name:    "Dexcom",
-			Tenant:  "dexcom",
-			Site:    "Dexcom",
-			BaseURL: "https://dexcom.wd1.myworkdayjobs.com/Dexcom/",
+			Name:     "Dexcom",
+			Tenant:   "dexcom",
+			Site:     "Dexcom",
+			BaseURL:  "https://dexcom.wd1.myworkdayjobs.com/Dexcom/",
+			Platform: "workday",
+		},
+		{
+			Name:     "Stripe",
+			Tenant:   "stripe",
+			Platform: "greenhouse",
 		},
 	}
 
@@ -120,14 +128,14 @@ func (s *SQLStore) SeedTargets() error {
 	}
 	defer tx.Rollback()
 
-	stmt, err := tx.Prepare("INSERT INTO target_companies (name, tenant, site, base_url) VALUES (?, ?, ?, ?)")
+	stmt, err := tx.Prepare("INSERT INTO target_companies (name, tenant, site, base_url, platform) VALUES (?, ?, ?, ?, ?)")
 	if err != nil {
 		return err
 	}
 	defer stmt.Close()
 
 	for _, t := range targets {
-		if _, err := stmt.Exec(t.Name, t.Tenant, t.Site, t.BaseURL); err != nil {
+		if _, err := stmt.Exec(t.Name, t.Tenant, t.Site, t.BaseURL, t.Platform); err != nil {
 			return err
 		}
 	}
@@ -137,7 +145,7 @@ func (s *SQLStore) SeedTargets() error {
 
 // GetTargets retrieves all target companies from the database.
 func (s *SQLStore) GetTargets() ([]scraper.TargetCompany, error) {
-	rows, err := s.db.Query("SELECT name, tenant, site, base_url FROM target_companies")
+	rows, err := s.db.Query("SELECT name, tenant, site, base_url, platform FROM target_companies")
 	if err != nil {
 		return nil, err
 	}
@@ -146,7 +154,7 @@ func (s *SQLStore) GetTargets() ([]scraper.TargetCompany, error) {
 	var targets []scraper.TargetCompany
 	for rows.Next() {
 		var t scraper.TargetCompany
-		if err := rows.Scan(&t.Name, &t.Tenant, &t.Site, &t.BaseURL); err != nil {
+		if err := rows.Scan(&t.Name, &t.Tenant, &t.Site, &t.BaseURL, &t.Platform); err != nil {
 			return nil, err
 		}
 		targets = append(targets, t)
@@ -172,13 +180,15 @@ func (s *SQLStore) SaveJob(company string, job scraper.JobListing, analysis *tel
 	VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`
 	// Simple comma-separated strings for slices for now
-	techStack := ""
+	var techStack, regGates string
 	if analysis != nil {
 		techStack = join(analysis.TechStack, ", ")
-	}
-	regGates := ""
-	if analysis != nil {
 		regGates = join(analysis.RegulatoryGates, ", ")
+	} else {
+		// Provide default empty analysis if none exists to avoid nil dereference
+		analysis = &telemetry.AnalysisResult{
+			RoleType: "Unknown",
+		}
 	}
 
 	_, err := s.db.Exec(query,
