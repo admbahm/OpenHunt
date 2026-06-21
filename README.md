@@ -1,3 +1,12 @@
+```text
+  ___                   _   _             _
+ / _ \ _ __   ___ _ __ | | | |_   _ _ __ | |_
+| | | | '_ \ / _ \ '_ \| |_| | | | | '_ \| __|
+| |_| | |_) |  __/ | | |  _  | |_| | | | | |_
+ \___/| .__/ \___|_| |_|_| |_|\__,_|_| |_|\__|
+      |_|
+```
+
 # openHunt
 
 openHunt is a sovereign, local-first market intelligence engine designed to counteract asymmetric automated screening pipelines. It empowers job seekers by automating the collection and analysis of job market data using a private, local-first architecture.
