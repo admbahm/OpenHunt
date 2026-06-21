@@ -1,29 +1,38 @@
 # Architecture Overview
 
-`openHunt` is designed as a sovereign, local-first market intelligence engine. It works by targeting Workday CXS endpoints, persisting new listings to a local SQLite database, analyzing them using a local Ollama LLM, and exporting structured findings to an Obsidian vault.
+`openHunt` is designed as a sovereign, local-first market intelligence engine. It collects listings from Workday CXS and Greenhouse job-board APIs, persists new listings to a local SQLite database, analyzes them using a local Ollama LLM, and exports structured findings to an Obsidian vault.
 
 ## System Layout
 
 ```mermaid
 graph TD
-    A[Scraper Runner] -->|Target Config| B(Stateful Workday Client)
-    B -->|1. GET base URL| C[Harvest Cookie / CSRF]
-    B -->|2. POST JSON search| D[Retrieve Job Listings]
-    D -->|Job Payload| E[SQLite Diff Engine]
-    E -->|Is job new?| F{New Job?}
-    F -->|Yes| G[Sequential AI worker]
-    F -->|No| H[Discard]
-    G -->|Prompt + Title| I[Ollama Client]
-    I -->|JSON analysis| J[Obsidian Vault Writer]
-    J -->|Atomic Markdown file| K[Obsidian Vault]
+    A[Scraper Runner] -->|Target Config| B{Scraper Factory}
+    B -->|workday| C[Stateful Workday Client]
+    B -->|greenhouse| D[Greenhouse API Client]
+    C -->|GET landing page| E[Harvest Cookie / CSRF]
+    C -->|Paginated POST search| F[Retrieve Job Listings]
+    D -->|GET public board API| F
+    F -->|Normalized JobListing| G[SQLite Diff Engine]
+    G -->|Is job new?| H{New Job?}
+    H -->|Yes| I[Sequential AI worker]
+    H -->|No| J[Discard]
+    I -->|Prompt + Title| K[Ollama Client]
+    K -->|JSON analysis| L[Obsidian Vault Writer]
+    L -->|Atomic Markdown file| M[Obsidian Vault]
 ```
 
-## 1. Stateful Scraping client (`internal/scraper`)
+## 1. ATS Scraping Clients (`internal/scraper`)
 
-Workday job boards require a stateful session to prevent CSRF exploits and verify web browser authenticity. The scraper client uses a Go `cookiejar` and splits execution into two phases:
+The scraper factory selects a backend from each target company's `platform`. Both backends normalize their responses into the shared `JobListing` model.
+
+Workday job boards require a stateful session to prevent CSRF exploits and verify web browser authenticity. The Workday client uses a Go `cookiejar` and splits execution into two phases:
 
 1. **GET Request (Token Harvesting)**: A `GET` request is made to the main public-facing landing page of the career portal (e.g. `https://illumina.wd1.myworkdayjobs.com/en-US/illumina-careers/`). This forces Workday to initialize the session and drop the `CALYPSO_CSRF_TOKEN` cookie.
 2. **POST Request (JSON query)**: A `POST` request containing a specific JSON payload is made to the internal API endpoint (e.g. `https://{tenant}.wd1.myworkdayjobs.com/wday/cxs/{tenant}/{site}/jobs`). The CSRF token is extracted from the cookie jar and set in the `X-Calypso-Csrf-Token` header.
+
+The Workday client resolves dynamic facet IDs, remaps location facets as required, and paginates through every result page with a jittered delay.
+
+The Greenhouse client reads the public boards API and applies normalized category, country, and location filters. Remote matching is intentionally relaxed to support values such as `Remote, US`.
 
 ## 2. SQLite Diff Engine (`internal/db`)
 
