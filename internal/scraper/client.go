@@ -60,19 +60,20 @@ func (c *WorkdayScraper) FetchJobs(target TargetCompany) ([]JobListing, error) {
 	}
 
 	targetURL := fmt.Sprintf("%s://%s/wday/cxs/%s/%s/jobs", u.Scheme, u.Host, target.Tenant, target.Site)
-	return c.fetchJobsAt(targetURL, target.Category, target.Location)
+	return c.fetchJobsAt(targetURL, target.Category, target.Country, target.Location)
 }
 
-func (c *WorkdayScraper) fetchJobsAt(targetURL string, category, location string) ([]JobListing, error) {
+func (c *WorkdayScraper) fetchJobsAt(targetURL string, category, country, location string) ([]JobListing, error) {
 	appliedFacets := make(map[string][]string)
 	if category != "" && category != "All" {
-		// Workday category facet key is usually 'jobFamilyGroup' or 'functionalCategory'
-		// This varies by tenant, but 'jobFamilyGroup' is widely supported for internal IDs
 		appliedFacets["jobFamilyGroup"] = []string{category}
 	}
+	if country != "" && country != "All" {
+		// Use 'locations' for country filter as well, as Workday often groups them
+		appliedFacets["locations"] = append(appliedFacets["locations"], country)
+	}
 	if location != "" && location != "All" {
-		// 'locations' is more reliable for direct location IDs/names than 'locationHierarchy1'
-		appliedFacets["locations"] = []string{location}
+		appliedFacets["locations"] = append(appliedFacets["locations"], location)
 	}
 
 	reqPayload := WorkdayRequest{

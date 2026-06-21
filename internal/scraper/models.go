@@ -10,6 +10,7 @@ type TargetCompany struct {
 	BaseURL  string `db:"base_url"` // Main landing page
 	Platform string `db:"platform"` // 'workday', 'greenhouse', 'lever', etc.
 	Category string `db:"-"`        // Runtime filter
+	Country  string `db:"-"`        // Runtime filter
 	Location string `db:"-"`        // Runtime filter
 }
 

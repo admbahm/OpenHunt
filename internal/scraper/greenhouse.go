@@ -28,6 +28,10 @@ func (g *GreenhouseScraper) FetchJobs(target TargetCompany) ([]JobListing, error
 	if target.Location != "" && target.Location != "All" {
 		// Greenhouse API supports location filtering via query param
 		endpoint = fmt.Sprintf("%s?location=%s", endpoint, target.Location)
+	} else if target.Country != "" && target.Country != "All" {
+		// If no specific location, try filtering by country if Greenhouse supports it
+		// Greenhouse location param often works for both city and country
+		endpoint = fmt.Sprintf("%s?location=%s", endpoint, target.Country)
 	}
 
 	req, _ := http.NewRequest("GET", endpoint, nil)

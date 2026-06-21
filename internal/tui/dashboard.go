@@ -47,19 +47,26 @@ func (d itemDelegate) Render(w io.Writer, m list.Model, index int, listItem list
 }
 
 type Model struct {
-	categories  list.Model
-	locations   list.Model
-	focused     int // 0 for categories, 1 for locations
-	SelectedCat string
-	SelectedLoc string
-	Quitting    bool
-	Submitted   bool
+	categories      list.Model
+	countries       list.Model
+	locations       list.Model
+	focused         int // 0 for categories, 1 for countries, 2 for locations
+	SelectedCat     string
+	SelectedCountry string
+	SelectedLoc     string
+	Quitting        bool
+	Submitted       bool
 }
 
-func NewModel(cats, locs []string) Model {
+func NewModel(cats, countries, locs []string) Model {
 	catItems := make([]list.Item, len(cats))
 	for i, c := range cats {
 		catItems[i] = item(c)
+	}
+
+	countryItems := make([]list.Item, len(countries))
+	for i, c := range countries {
+		countryItems[i] = item(c)
 	}
 
 	locItems := make([]list.Item, len(locs))
@@ -73,6 +80,12 @@ func NewModel(cats, locs []string) Model {
 	cList.SetShowStatusBar(false)
 	cList.SetFilteringEnabled(false)
 
+	coList := list.New(countryItems, itemDelegate{}, 20, 10)
+	coList.Title = "Country"
+	coList.SetShowHelp(false)
+	coList.SetShowStatusBar(false)
+	coList.SetFilteringEnabled(false)
+
 	lList := list.New(locItems, itemDelegate{}, 20, 10)
 	lList.Title = "Geographic Location"
 	lList.SetShowHelp(false)
@@ -81,6 +94,7 @@ func NewModel(cats, locs []string) Model {
 
 	return Model{
 		categories: cList,
+		countries:  coList,
 		locations:  lList,
 		focused:    0,
 	}
@@ -98,23 +112,27 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.Quitting = true
 			return m, tea.Quit
 		case "tab":
-			m.focused = (m.focused + 1) % 2
+			m.focused = (m.focused + 1) % 3
 			return m, nil
 		case "enter":
 			m.SelectedCat = string(m.categories.SelectedItem().(item))
+			m.SelectedCountry = string(m.countries.SelectedItem().(item))
 			m.SelectedLoc = string(m.locations.SelectedItem().(item))
 			m.Submitted = true
 			return m, tea.Quit
 		}
 	case tea.WindowSizeMsg:
 		h, v := docStyle.GetFrameSize()
-		m.categories.SetSize(msg.Width/2-h, msg.Height-v)
-		m.locations.SetSize(msg.Width/2-h, msg.Height-v)
+		m.categories.SetSize(msg.Width/3-h, msg.Height-v)
+		m.countries.SetSize(msg.Width/3-h, msg.Height-v)
+		m.locations.SetSize(msg.Width/3-h, msg.Height-v)
 	}
 
 	var cmd tea.Cmd
 	if m.focused == 0 {
 		m.categories, cmd = m.categories.Update(msg)
+	} else if m.focused == 1 {
+		m.countries, cmd = m.countries.Update(msg)
 	} else {
 		m.locations, cmd = m.locations.Update(msg)
 	}
@@ -127,14 +145,17 @@ func (m Model) View() string {
 		return "Exiting...\n"
 	}
 	if m.Submitted {
-		return fmt.Sprintf("Selected Category: %s\nSelected Location: %s\nRunning crawl...\n", m.SelectedCat, m.SelectedLoc)
+		return fmt.Sprintf("Selected Category: %s\nSelected Country: %s\nSelected Location: %s\nRunning crawl...\n", m.SelectedCat, m.SelectedCountry, m.SelectedLoc)
 	}
 
 	catStyle := unfocusedStyle
+	countryStyle := unfocusedStyle
 	locStyle := unfocusedStyle
 
 	if m.focused == 0 {
 		catStyle = focusedStyle
+	} else if m.focused == 1 {
+		countryStyle = focusedStyle
 	} else {
 		locStyle = focusedStyle
 	}
@@ -143,6 +164,7 @@ func (m Model) View() string {
 		lipgloss.JoinHorizontal(
 			lipgloss.Top,
 			catStyle.Render(m.categories.View()),
+			countryStyle.Render(m.countries.View()),
 			locStyle.Render(m.locations.View()),
 		),
 	)

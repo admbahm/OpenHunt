@@ -36,8 +36,9 @@ func main() {
 
 	// TUI Selection
 	cats := []string{"All", "Engineering", "Quality", "Information Technology", "Sales", "Manufacturing and Operations"}
+	countries := []string{"All", "United States of America", "Ireland", "India", "Malaysia", "Germany"}
 	locs := []string{"All", "San Diego, California", "Athenry, Ireland", "Bengaluru, India", "Penang, Malaysia", "Remote"}
-	tuiModel := tui.NewModel(cats, locs)
+	tuiModel := tui.NewModel(cats, countries, locs)
 	p := tea.NewProgram(tuiModel)
 	finalModel, err := p.Run()
 	if err != nil {
@@ -61,6 +62,7 @@ func main() {
 	// Apply TUI filters to targets
 	for i := range targets {
 		targets[i].Category = m.SelectedCat
+		targets[i].Country = m.SelectedCountry
 		targets[i].Location = m.SelectedLoc
 	}
 

@@ -1,86 +1,443 @@
 Command finished with exit code 0.
 Command output:
-Note: Unnecessary use of -X or --request, POST is already inferred.
-  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
-                                 Dload  Upload   Total   Spent    Left  Speed
-
-  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0* Host dexcom.wd1.myworkdayjobs.com:443 was resolved.
-* IPv6: (none)
-* IPv4: 209.177.165.20
-*   Trying 209.177.165.20:443...
-* Connected to dexcom.wd1.myworkdayjobs.com (209.177.165.20) port 443
-* ALPN: curl offers h2,http/1.1
-* (304) (OUT), TLS handshake, Client hello (1):
-} [333 bytes data]
-*  CAfile: /etc/ssl/cert.pem
-*  CApath: none
-* (304) (IN), TLS handshake, Server hello (2):
-{ [122 bytes data]
-* (304) (IN), TLS handshake, Unknown (8):
-{ [19 bytes data]
-* (304) (IN), TLS handshake, Certificate (11):
-{ [2078 bytes data]
-* (304) (IN), TLS handshake, CERT verify (15):
-{ [79 bytes data]
-* (304) (IN), TLS handshake, Finished (20):
-{ [36 bytes data]
-* (304) (OUT), TLS handshake, Finished (20):
-} [36 bytes data]
-* SSL connection using TLSv1.3 / AEAD-CHACHA20-POLY1305-SHA256 / [blank] / UNDEF
-* ALPN: server accepted h2
-* Server certificate:
-*  subject: CN=wd1.myworkdayjobs.com
-*  start date: May  9 07:17:44 2026 GMT
-*  expire date: Aug  7 07:17:43 2026 GMT
-*  subjectAltName: host "dexcom.wd1.myworkdayjobs.com" matched cert's "*.wd1.myworkdayjobs.com"
-*  issuer: C=US; O=Let's Encrypt; CN=E8
-*  SSL certificate verify ok.
-* using HTTP/2
-* [HTTP/2] [1] OPENED stream for https://dexcom.wd1.myworkdayjobs.com/wday/cxs/dexcom/Dexcom/jobs
-* [HTTP/2] [1] [:method: POST]
-* [HTTP/2] [1] [:scheme: https]
-* [HTTP/2] [1] [:authority: dexcom.wd1.myworkdayjobs.com]
-* [HTTP/2] [1] [:path: /wday/cxs/dexcom/Dexcom/jobs]
-* [HTTP/2] [1] [user-agent: curl/8.7.1]
-* [HTTP/2] [1] [accept: */*]
-* [HTTP/2] [1] [content-type: application/json]
-* [HTTP/2] [1] [content-length: 105]
-> POST /wday/cxs/dexcom/Dexcom/jobs HTTP/2
-> Host: dexcom.wd1.myworkdayjobs.com
-> User-Agent: curl/8.7.1
-> Accept: */*
-> Content-Type: application/json
-> Content-Length: 105
-> 
-} [105 bytes data]
-* upload completely sent off: 105 bytes
-< HTTP/2 200 
-< date: Sun, 21 Jun 2026 14:11:49 GMT
-< content-type: application/json
-< x-content-type-options: nosniff
-< vary: accept-encoding
-< pragma: no-cache
-< server: cloudflare
-< expires: Thu, 1 Jan 1970 00:00:00 UTC
-< set-cookie: PLAY_SESSION=142b1626be22fd7cf314a142fbe0ee0381f625ff-dexcom_pSessionId=avpki0c08g202q68d68hkfst4j&instance=vps-prod-k63dos2b.prod-vps.pr501.cust.ash.wd; SameSite=Lax; Path=/; Secure; HTTPOnly
-< set-cookie: wd-browser-id=d6d2543e-14d3-4513-a2be-908d4b156ed2; Path=/; Secure; HTTPOnly
-< set-cookie: CALYPSO_SESSION=3bdb07dd-e77a-4eef-8055-9ae7f4fdd93b.ZGV4Y29t.V0RDQzEuMIQAJQAAINUoShpMjGwupdzEnLhHRezTEzy+WxrhMBP3plIs24kxAACMABYBMQAQb0NlkWn/08RC8ZiqB42c5QAAADNiZGIwN2RkLWU3N2EtNGVlZi04MDU1LTlhZTdmNGZkZDkzYg==; SameSite=Lax; Path=/; Secure; HTTPOnly
-< set-cookie: wday_vps_cookie=4202199050.53810.0000; path=/; Httponly; Secure; SameSite=none
-< set-cookie: __cf_bm=cT2lpWtrgfToTj8xyLHXOPnEFp9vIDwbunLDedLiOOM-1782051109.6287553-1.0.1.1-7kVU59101sUiZFamLY0OzCJFkVjESMqHLaRbN_ipltsZPFa3z3uDkGN.s.8AS0RS.Mx8Uu89bf.vxpziJX0wgKJPa05BEdArkxflk8KqyXY1V8jJ5LdRESCdmjGOsiSS; HttpOnly; SameSite=None; Secure; Path=/; Domain=dexcom.wd1.myworkdayjobs.com; Expires=Sun, 21 Jun 2026 14:41:49 GMT
-< set-cookie: __cflb=02DiuEyZJzFVW6zKk23dzrfyh8dkkAVvMU7bfHHv5hra8; HttpOnly; SameSite=None; Secure; Path=/; Expires=Mon, 22 Jun 2026 13:11:49 GMT
-< set-cookie: _cfuvid=x8Hif4h1RKJ4vfTRZpOOjfQvIqvEtoCCSJJiTIj089A-1782051109.6287553-1.0.1.1-o0MX_Q2luMqxvPRCc.W7eTSu42LQ3FZFNk7xxSUQGYc; HttpOnly; SameSite=None; Secure; Path=/; Domain=dexcom.wd1.myworkdayjobs.com
-< cache-control: no-store, no-cache
-< x-wd-request-id: VPS|0c8bc8b7-5607-4356-a0d7-cf6c4fb534de
-< report-to: {"group":"cf-nel","max_age":604800,"endpoints":[{"url":"https://a.nel.cloudflare.com/report/v4?s=BRMHN0owwrAgW0dDEqNwYh5t5S3tmoT6WMa2GTZ5ymuh3%2F7wEX70F0gu8on%2FFcBiRjt2%2BQu3A4mDAQ0luCVh16xQGaxv3W5wJmC38tJ7cWshjWCHIF6pEzgv52eGJhG1XEhschBwJ%2FSfheE5sEM%3D"}]}
-< strict-transport-security: max-age=31536000; includeSubDomains
-< cf-cache-status: DYNAMIC
-< nel: {"report_to":"cf-nel","success_fraction":0.01,"max_age":604800}
-< cf-ray: a0f39acb2e7d0f51-EWR
-< alt-svc: h3=":443"; ma=86400
-< 
-{ [1140 bytes data]
-
-100  7103    0  6998  100   105  18534    278 --:--:-- --:--:-- --:--:-- 18791
-100  7103    0  6998  100   105  18534    278 --:--:-- --:--:-- --:--:-- 18791
-* Connection #0 to host dexcom.wd1.myworkdayjobs.com left intact
-{"total":60,"jobPostings":[{"title":"Global Security Operations Supervisor","externalPath":"/job/San-Diego-California/Global-Security-Operations-Supervisor_JR119414","locationsText":"San Diego, California","postedOn":"Posted 3 Days Ago","bulletFields":["JR119414"]}],"facets":[{"facetParameter":"jobFamilyGroup","descriptor":"Job Category","values":[{"descriptor":"Engineering","id":"74b7df0b56031000f6b3d41ffc060000","count":25},{"descriptor":"Quality","id":"74b7df0b56031000f6b3b9a1d7300000","count":6},{"descriptor":"Information Technology","id":"74b7df0b56031000f6b3b7d328fb0000","count":5},{"descriptor":"Human Resources","id":"74b7df0b56031000f6b3a9f56cd90001","count":5},{"descriptor":"Commercial Operations","id":"8750c682a04c100bb84e3387aa760000","count":3},{"descriptor":"Manufacturing and Operations","id":"74b7df0b56031000f6b42f15615f0000","count":3},{"descriptor":"Data","id":"74b7df0b56031000f6b3d8558ccc0000","count":3},{"descriptor":"Marketing","id":"8750c682a04c100bb84e2944e44c0001","count":2},{"descriptor":"Program Management","id":"8750c682a04c100bb84e25a6b6a80001","count":2},{"descriptor":"Finance","id":"74b7df0b56031000f6b430e2bb620000","count":2},{"descriptor":"Legal","id":"74b7df0b56031000f6b3ff7413d10001","count":2},{"descriptor":"Student Worker","id":"8750c682a04c100bb84e2a7aae4a0000","count":1},{"descriptor":"Clinical","id":"74b7df0b56031000f6b3cce4b7be0000","count":1}]},{"facetParameter":"workerSubType","descriptor":"Job Type","values":[{"descriptor":"Regular","id":"74b7df0b56031000f6a859a0d1bb0000","count":59},{"descriptor":"Temporary","id":"74b7df0b56031000f69ebc389e0b0001","count":1}]},{"facetParameter":"timeType","descriptor":"Time Type","values":[{"descriptor":"Full time","id":"8750c682a04c100b72d15e217ed90001","count":60}]},{"facetParameter":"remoteType","descriptor":"Remote Type","values":[{"descriptor":"Assigned Desk","id":"e8a3a2b700911000f5bc4d74c9e60000","count":28},{"descriptor":"Flex","id":"e8a3a2b700911000f5bc4e0ecd120000","count":22},{"descriptor":"Remote","id":"e8a3a2b700911000f5bc4ea8f60e0000","count":8},{"descriptor":"Non-Desk","id":"e8a3a2b700911000f5bc4ea8f60e0001","count":2}]},{"facetParameter":"locationMainGroup","values":[{"facetParameter":"locations","descriptor":"Locations","values":[{"descriptor":"San Diego, California","id":"74b7df0b56031000f7613f5314270000","count":60},{"descriptor":"Manila, Philippines","id":"74b7df0b56031000f7618e35a23d0000","count":54},{"descriptor":"Penang, Malaysia","id":"74b7df0b56031000f76173bf27220000","count":46},{"descriptor":"Athenry, Ireland","id":"04a78a3e58721001b004d33381e80000","count":45},{"descriptor":"Vilnius, Lithuania","id":"74b7df0b56031000f7618a00302f0000","count":32},{"descriptor":"Cebu, Philippines","id":"74b7df0b56031000f76180fcb9310000","count":28},{"descriptor":"Bengaluru, India","id":"28233526db001001f9976652322f0000","count":27},{"descriptor":"Mesa, Arizona","id":"74b7df0b56031000f761a33ace930000","count":18},{"descriptor":"Remote - United States","id":"74b7df0b56031000f761a76eedb30000","count":15},{"descriptor":"Mainz, Germany","id":"74b7df0b56031000f7615ba4b8470000","count":10},{"descriptor":"Remote - United Kingdom","id":"74b7df0b56031000f761c48c988e0000","count":9},{"descriptor":"Remote - Spain","id":"74b7df0b56031000f7614b5d278d0000","count":8},{"descriptor":"Remote - Germany","id":"74b7df0b56031000f7615f435d900000","count":5},{"descriptor":"Remote - Belgium","id":"51827b4c6cc41000b54aff4362840000","count":5},{"descriptor":"Singapore","id":"74b7df0b56031000f761896691a40000","count":5},{"descriptor":"Barcelona, Spain","id":"74b7df0b56031000f76183fe0eef0000","count":4},{"descriptor":"Edinburgh, Scotland","id":"74b7df0b56031000f7613bb830550000","count":3},{"descriptor":"Sydney, Australia","id":"4f04fd50f4391001b1a24739a2f90000","count":3},{"descriptor":"Remote California","id":"74b7df0b56031000f7619ad16dd00000","count":3},{"descriptor":"Leicester, United Kingdom","id":"041ad49f5dd510015c029ed6b90b0000","count":2},{"descriptor":"Auckland, New Zealand","id":"74b7df0b56031000f7616245cd350000","count":2},{"descriptor":"Tokyo, Japan","id":"74b7df0b56031000f76156388b930000","count":2},{"descriptor":"Remote - Netherlands","id":"74b7df0b56031000f7614ac31e5b0000","count":2},{"descriptor":"Remote - Malaysia","id":"74b7df0b56031000f76141210aa10000","count":2},{"descriptor":"Remote British Columbia","id":"74b7df0b56031000f761a76eedb40000","count":2},{"descriptor":"Remote - Canada","id":"74b7df0b56031000f7619dd2d2d70000","count":2},{"descriptor":"Remote - Slovenia","id":"74b7df0b56031000f7619dd2d2d60000","count":2},{"descriptor":"Remote - Philippines","id":"74b7df0b56031000f7619dd2d2d40000","count":2},{"descriptor":"Remote - Ireland","id":"74b7df0b56031000f761960310c40000","count":2},{"descriptor":"Remote - Lithuania","id":"74b7df0b56031000f7618230a1f10000","count":2},{"descriptor":"Münster, Germany","id":"8353c297ab2510015d79256af0ce0000","count":1},{"descriptor":"Frankfurt am Main, Germany","id":"8353c297ab2510015d76eaee30060000","count":1},{"descriptor":"Dortmund, Germany","id":"8353c297ab2510015d766e87746a0000","count":1},{"descriptor":"Darmstadt, Germany","id":"8353c297ab2510015d76343accbe0000","count":1},{"descriptor":"Mons, Belgium","id":"99db9f69b1101001aa78a7a491c60000","count":1},{"descriptor":"Remote United Kingdom","id":"74b7df0b56031000f761503146c00000","count":1},{"descriptor":"Remote Italy","id":"0ce367751d4310015e0c0877820d0000","count":1},{"descriptor":"Riyadh, Saudi Arabia","id":"4ef58011a5021001587500a87dcf0000","count":1},{"descriptor":"Remote - Saudi Arabia","id":"4ef58011a5021001584fae86a5a60000","count":1},{"descriptor":"Peachtree City, Georgia","id":"67222cb55f6a1001bfa6106d149f0000","count":1},{"descriptor":"New Brunswick, New Jersey","id":"67222cb55f6a1001bfa595fda8210000","count":1},{"descriptor":"Milwaukee, Wisconsin","id":"67222cb55f6a1001bfa553aa85ac0000","count":1},{"descriptor":"Vienna, Austria","id":"04a78a3e58721001b00646454dd60000","count":1},{"descriptor":"Nashville, Tennessee","id":"04a78a3e58721001b005ccc72eda0000","count":1},{"descriptor":"Galway, Ireland","id":"04a78a3e58721001b00556550bd30000","count":1},{"descriptor":"Bielefeld, Germany","id":"04a78a3e58721001b004f9aed23d0000","count":1},{"descriptor":"Remote - France","id":"51827b4c6cc41000b54b39083f750000","count":1},{"descriptor":"Paris, France","id":"51827b4c6cc41000b54b34d431880000","count":1},{"descriptor":"Remote Arkansas","id":"74b7df0b56031000f761b54ef6ce0000","count":1},{"descriptor":"Madrid, Spain","id":"74b7df0b56031000f761a942ff2c0000","count":1},{"descriptor":"Remote - Austria","id":"74b7df0b56031000f761a0d37e580000","count":1},{"descriptor":"Edinburgh","id":"74b7df0b56031000f76197cff2a30000","count":1},{"descriptor":"Remote Malaysia","id":"74b7df0b56031000f761943633060000","count":1},{"descriptor":"Brunn am Gebirge, Austria","id":"74b7df0b56031000f761943633050000","count":1},{"descriptor":"Remote Iowa","id":"74b7df0b56031000f761909c1ef40000","count":1}]}]}],"userAuthenticated":false}
+{
+  "facetParameter": "locationMainGroup",
+  "values": [
+    {
+      "facetParameter": "locations",
+      "descriptor": "Locations",
+      "values": [
+        {
+          "descriptor": "Athenry, Ireland",
+          "id": "04a78a3e58721001b004d33381e80000",
+          "count": 45
+        },
+        {
+          "descriptor": "Auckland, New Zealand",
+          "id": "74b7df0b56031000f7616245cd350000",
+          "count": 2
+        },
+        {
+          "descriptor": "Barcelona, Spain",
+          "id": "74b7df0b56031000f76183fe0eef0000",
+          "count": 4
+        },
+        {
+          "descriptor": "Basildon, United Kingdom",
+          "id": "70e71a8f99481001a5a62d5a43440000",
+          "count": 1
+        },
+        {
+          "descriptor": "Bengaluru, India",
+          "id": "28233526db001001f9976652322f0000",
+          "count": 27
+        },
+        {
+          "descriptor": "Bielefeld, Germany",
+          "id": "04a78a3e58721001b004f9aed23d0000",
+          "count": 1
+        },
+        {
+          "descriptor": "Birmingham, United Kingdom",
+          "id": "3eed2193cdfd1001606b2d0620460000",
+          "count": 1
+        },
+        {
+          "descriptor": "Bracknell",
+          "id": "0b292a74a10210015afea94443430000",
+          "count": 1
+        },
+        {
+          "descriptor": "Bracknell, United Kingdom",
+          "id": "c9c3d333052d10015b31b847afef0000",
+          "count": 1
+        },
+        {
+          "descriptor": "Bristol, United Kingdom",
+          "id": "d829a01d72cf1001605b4de8d10c0000",
+          "count": 1
+        },
+        {
+          "descriptor": "Brugge, Belgium",
+          "id": "be4f9c9eef0710016a068e946bc80000",
+          "count": 1
+        },
+        {
+          "descriptor": "Brunn am Gebirge, Austria",
+          "id": "74b7df0b56031000f761943633050000",
+          "count": 1
+        },
+        {
+          "descriptor": "Brussels, Belgium",
+          "id": "69420d04e2c21001697bbdde93770000",
+          "count": 1
+        },
+        {
+          "descriptor": "Cambridge, United Kingdom",
+          "id": "041ad49f5dd510015c026a04dd040000",
+          "count": 1
+        },
+        {
+          "descriptor": "Cebu, Philippines",
+          "id": "74b7df0b56031000f76180fcb9310000",
+          "count": 28
+        },
+        {
+          "descriptor": "Darmstadt, Germany",
+          "id": "8353c297ab2510015d76343accbe0000",
+          "count": 1
+        },
+        {
+          "descriptor": "Derby, United Kingdom",
+          "id": "3eed2193cdfd1001606b0e5f92400000",
+          "count": 1
+        },
+        {
+          "descriptor": "Dortmund, Germany",
+          "id": "8353c297ab2510015d766e87746a0000",
+          "count": 1
+        },
+        {
+          "descriptor": "East Anglia, United Kingdom",
+          "id": "041ad49f5dd510015c02833b0e020000",
+          "count": 1
+        },
+        {
+          "descriptor": "Edinburgh",
+          "id": "74b7df0b56031000f76197cff2a30000",
+          "count": 1
+        },
+        {
+          "descriptor": "Edinburgh, Scotland",
+          "id": "74b7df0b56031000f7613bb830550000",
+          "count": 3
+        },
+        {
+          "descriptor": "Frankfurt am Main, Germany",
+          "id": "8353c297ab2510015d76eaee30060000",
+          "count": 1
+        },
+        {
+          "descriptor": "Galway, Ireland",
+          "id": "04a78a3e58721001b00556550bd30000",
+          "count": 1
+        },
+        {
+          "descriptor": "Ghent, Belgium",
+          "id": "4ca252e90cac100169ddbad5e1bc0000",
+          "count": 1
+        },
+        {
+          "descriptor": "Hague, Netherlands",
+          "id": "a627e72daa9f10016a7310c95d470000",
+          "count": 1
+        },
+        {
+          "descriptor": "Harlow, United Kingdom",
+          "id": "70e71a8f99481001a5a63bc30ca10000",
+          "count": 1
+        },
+        {
+          "descriptor": "Hertfordshire, United Kingdom",
+          "id": "041ad49f5dd510015c025195e9d50000",
+          "count": 1
+        },
+        {
+          "descriptor": "Kortrijk, Belgium",
+          "id": "be4f9c9eef0710016a06a134d3710000",
+          "count": 1
+        },
+        {
+          "descriptor": "Leeds, United Kingdom",
+          "id": "d829a01d72cf1001605ad8489a3a0000",
+          "count": 1
+        },
+        {
+          "descriptor": "Leicester, United Kingdom",
+          "id": "041ad49f5dd510015c029ed6b90b0000",
+          "count": 2
+        },
+        {
+          "descriptor": "Leiden, Netherlands",
+          "id": "e0abaf11208010016a673c74b86c0000",
+          "count": 1
+        },
+        {
+          "descriptor": "Lincoln, United Kingdom",
+          "id": "2296cecbc8081001b5ac1eb639370000",
+          "count": 1
+        },
+        {
+          "descriptor": "Liverpool, United Kingdom",
+          "id": "86e76dc9ba4d1001b483ca872b820000",
+          "count": 1
+        },
+        {
+          "descriptor": "Madrid, Spain",
+          "id": "74b7df0b56031000f761a942ff2c0000",
+          "count": 1
+        },
+        {
+          "descriptor": "Mainz, Germany",
+          "id": "74b7df0b56031000f7615ba4b8470000",
+          "count": 10
+        },
+        {
+          "descriptor": "Manila, Philippines",
+          "id": "74b7df0b56031000f7618e35a23d0000",
+          "count": 54
+        },
+        {
+          "descriptor": "Mesa, Arizona",
+          "id": "74b7df0b56031000f761a33ace930000",
+          "count": 18
+        },
+        {
+          "descriptor": "Milwaukee, Wisconsin",
+          "id": "67222cb55f6a1001bfa553aa85ac0000",
+          "count": 1
+        },
+        {
+          "descriptor": "Mons, Belgium",
+          "id": "99db9f69b1101001aa78a7a491c60000",
+          "count": 1
+        },
+        {
+          "descriptor": "Münster, Germany",
+          "id": "8353c297ab2510015d79256af0ce0000",
+          "count": 1
+        },
+        {
+          "descriptor": "Nashville, Tennessee",
+          "id": "04a78a3e58721001b005ccc72eda0000",
+          "count": 1
+        },
+        {
+          "descriptor": "New Brunswick, New Jersey",
+          "id": "67222cb55f6a1001bfa595fda8210000",
+          "count": 1
+        },
+        {
+          "descriptor": "Nottingham, United Kingdom",
+          "id": "d829a01d72cf1001605b0d16ec110000",
+          "count": 1
+        },
+        {
+          "descriptor": "Oxford, United Kingdom",
+          "id": "baf900d4e2701001606c7418d47c0000",
+          "count": 1
+        },
+        {
+          "descriptor": "Paris, France",
+          "id": "51827b4c6cc41000b54b34d431880000",
+          "count": 1
+        },
+        {
+          "descriptor": "Peachtree City, Georgia",
+          "id": "67222cb55f6a1001bfa6106d149f0000",
+          "count": 1
+        },
+        {
+          "descriptor": "Penang, Malaysia",
+          "id": "74b7df0b56031000f76173bf27220000",
+          "count": 46
+        },
+        {
+          "descriptor": "Plainfield, New Jersey",
+          "id": "de826b7a773e100164d39e2d76500000",
+          "count": 1
+        },
+        {
+          "descriptor": "Remote Arizona",
+          "id": "74b7df0b56031000f7616e556b510000",
+          "count": 1
+        },
+        {
+          "descriptor": "Remote Arkansas",
+          "id": "74b7df0b56031000f761b54ef6ce0000",
+          "count": 1
+        },
+        {
+          "descriptor": "Remote - Austria",
+          "id": "74b7df0b56031000f761a0d37e580000",
+          "count": 1
+        },
+        {
+          "descriptor": "Remote - Belgium",
+          "id": "51827b4c6cc41000b54aff4362840000",
+          "count": 5
+        },
+        {
+          "descriptor": "Remote British Columbia",
+          "id": "74b7df0b56031000f761a76eedb40000",
+          "count": 2
+        },
+        {
+          "descriptor": "Remote California",
+          "id": "74b7df0b56031000f7619ad16dd00000",
+          "count": 3
+        },
+        {
+          "descriptor": "Remote - Canada",
+          "id": "74b7df0b56031000f7619dd2d2d70000",
+          "count": 2
+        },
+        {
+          "descriptor": "Remote - France",
+          "id": "51827b4c6cc41000b54b39083f750000",
+          "count": 1
+        },
+        {
+          "descriptor": "Remote - Germany",
+          "id": "74b7df0b56031000f7615f435d900000",
+          "count": 5
+        },
+        {
+          "descriptor": "Remote Iowa",
+          "id": "74b7df0b56031000f761909c1ef40000",
+          "count": 1
+        },
+        {
+          "descriptor": "Remote - Ireland",
+          "id": "74b7df0b56031000f761960310c40000",
+          "count": 2
+        },
+        {
+          "descriptor": "Remote Italy",
+          "id": "0ce367751d4310015e0c0877820d0000",
+          "count": 1
+        },
+        {
+          "descriptor": "Remote - Lithuania",
+          "id": "74b7df0b56031000f7618230a1f10000",
+          "count": 2
+        },
+        {
+          "descriptor": "Remote Malaysia",
+          "id": "74b7df0b56031000f761943633060000",
+          "count": 1
+        },
+        {
+          "descriptor": "Remote - Malaysia",
+          "id": "74b7df0b56031000f76141210aa10000",
+          "count": 2
+        },
+        {
+          "descriptor": "Remote Mississippi",
+          "id": "74b7df0b56031000f7616245cd360000",
+          "count": 1
+        },
+        {
+          "descriptor": "Remote - Netherlands",
+          "id": "74b7df0b56031000f7614ac31e5b0000",
+          "count": 2
+        },
+        {
+          "descriptor": "Remote - New Zealand",
+          "id": "74b7df0b56031000f7616dbb0a200000",
+          "count": 1
+        },
+        {
+          "descriptor": "Remote - Philippines",
+          "id": "74b7df0b56031000f7619dd2d2d40000",
+          "count": 2
+        },
+        {
+          "descriptor": "Remote - Saudi Arabia",
+          "id": "4ef58011a5021001584fae86a5a60000",
+          "count": 1
+        },
+        {
+          "descriptor": "Remote - Slovenia",
+          "id": "74b7df0b56031000f7619dd2d2d60000",
+          "count": 2
+        },
+        {
+          "descriptor": "Remote - Spain",
+          "id": "74b7df0b56031000f7614b5d278d0000",
+          "count": 8
+        },
+        {
+          "descriptor": "Remote United Kingdom",
+          "id": "74b7df0b56031000f761503146c00000",
+          "count": 1
+        },
+        {
+          "descriptor": "Remote - United Kingdom",
+          "id": "74b7df0b56031000f761c48c988e0000",
+          "count": 9
+        },
+        {
+          "descriptor": "Remote - United States",
+          "id": "74b7df0b56031000f761a76eedb30000",
+          "count": 15
+        },
+        {
+          "descriptor": "Riyadh, Saudi Arabia",
+          "id": "4ef58011a5021001587500a87dcf0000",
+          "count": 1
+        },
+        {
+          "descriptor": "Rotterdam, Netherlands",
+          "id": "febc1afd529710016aa9a8a14dd00000",
+          "count": 1
+        },
+        {
+          "descriptor": "San Diego, California",
+          "id": "74b7df0b56031000f7613f5314270000",
+          "count": 60
+        },
+        {
+          "descriptor": "Sheffield, United Kingdom",
+          "id": "3eed2193cdfd1001606afb11d4eb0000",
+          "count": 1
+        },
+        {
+          "descriptor": "Singapore",
+          "id": "74b7df0b56031000f761896691a40000",
+          "count": 5
+        },
+        {
+          "descriptor": "Southampton, United Kingdom",
+          "id": "3eed2193cdfd1001606b39a47d4d0000",
+          "count": 1
+        },
+        {
+          "descriptor": "St. Albans, United Kingdom",
+          "id": "86e76dc9ba4d1001b483f71c9cbc0000",
+          "count": 1
+        },
+        {
+          "descriptor": "Stevenage, United Kingdom",
+          "id": "86e76dc9ba4d1001b4840289ccc70000",
+          "count": 1
+        },
+        {
+          "descriptor": "Sydney, Australia",
+          "id": "4f04fd50f4391001b1a24739a2f90000",
+          "count": 3
+        },
+        {
+          "descriptor": "Tokyo, Japan",
+          "id": "74b7df0b56031000f76156388b930000",
+          "count": 2
+        },
+        {
+          "descriptor": "Vienna, Austria",
+          "id": "04a78a3e58721001b00646454dd60000",
+          "count": 1
+        },
+        {
+          "descriptor": "Vilnius, Lithuania",
+          "id": "74b7df0b56031000f7618a00302f0000",
+          "count": 32
+        },
+        {
+          "descriptor": "Wiesbaden, Germany",
+          "id": "8353c297ab2510015d7ab630b46c0000",
+          "count": 1
+        }
+      ]
+    }
+  ]
+}

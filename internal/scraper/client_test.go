@@ -91,6 +91,7 @@ func TestClient_FetchJobs_RequestStructure(t *testing.T) {
 		BaseURL:  server.URL,
 		Platform: "workday",
 		Category: "Engineering",
+		Country:  "United States of America",
 		Location: "San Diego, California",
 	}
 
