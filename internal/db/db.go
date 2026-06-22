@@ -162,6 +162,21 @@ func (s *SQLStore) GetTargets() ([]scraper.TargetCompany, error) {
 	return targets, nil
 }
 
+// AddTarget inserts a new target company or updates it if it exists.
+func (s *SQLStore) AddTarget(t scraper.TargetCompany) error {
+	query := `
+	INSERT INTO target_companies (name, tenant, site, base_url, platform)
+	VALUES (?, ?, ?, ?, ?)
+	ON CONFLICT(name) DO UPDATE SET
+		tenant = excluded.tenant,
+		site = excluded.site,
+		base_url = excluded.base_url,
+		platform = excluded.platform
+	`
+	_, err := s.db.Exec(query, t.Name, t.Tenant, t.Site, t.BaseURL, t.Platform)
+	return err
+}
+
 // IsJobNew checks if a job ID already exists in the database.
 func (s *SQLStore) IsJobNew(jobID string) (bool, error) {
 	var exists bool
