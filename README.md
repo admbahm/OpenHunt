@@ -15,6 +15,32 @@ openHunt is a sovereign, local-first market intelligence engine designed to coun
 
 In an era of automated HR filters and asymmetric information, openHunt provides the tools to build your own market intelligence. It targets Workday CXS and Greenhouse job-board APIs, processes the data through a local SQLite diff engine, and leverages local LLMs (via Ollama) to extract structured insights without leaking data to third-party providers.
 
+## Supported Platforms & Limitations
+
+> [!IMPORTANT]
+> **openHunt currently only supports Workday and Greenhouse job boards.** 
+> Custom career portals (such as Apple's proprietary system or Intuit's Radancy/Avature setup) are not supported. If a company uses a custom domain or an unsupported ATS, the discovery tool will fail to find a supported board.
+
+## Confirmed Target Companies
+
+The following companies have been successfully discovered and are confirmed in the database:
+
+| Company Name | Platform | Tenant / Identifier |
+| --- | --- | --- |
+| Adobe | Workday | `adobe` |
+| Broadcom | Workday | `broadcom` |
+| Cloudera | Workday | `cloudera` |
+| Coinbase | Greenhouse | `coinbase` |
+| Dexcom | Workday | `dexcom` |
+| Elastic | Greenhouse | `elastic` |
+| Illumina | Workday | `illumina` |
+| NVIDIA | Workday | `nvidia` |
+| Qualcomm | Workday | `qualcomm` |
+| Reddit | Greenhouse | `reddit` |
+| Salesforce | Workday | `salesforce` |
+| Sony PlayStation | Workday | `sonyglobal` |
+| Stripe | Greenhouse | `stripe` |
+
 ## Architecture
 
 The system operates as a multi-stage pipeline:
@@ -64,6 +90,19 @@ For more detailed guides, see:
 
 4. **Analyze the results**:
    Open the `Market-Insights/` folder in Obsidian to view your structured market intelligence.
+
+### Running Tests
+
+To run the unit tests:
+```bash
+go test -v ./...
+```
+
+#### Coverage Note (Go 1.25+ Toolchain Issue)
+If you are running Go 1.25+ pre-release toolchains, running `go test -cover ./...` may fail with `go: no such tool "covdata"` because the compiler attempts to analyze packages without test files. To run coverage successfully, target the packages with tests explicitly:
+```bash
+go test -v -cover ./internal/db ./internal/discovery ./internal/scraper ./internal/tui
+```
 
 ## License
 
