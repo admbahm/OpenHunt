@@ -280,28 +280,35 @@ func probeDirectFallbacks(companyName string) *scraper.TargetCompany {
 		}
 	}
 
-	// 2. Try Workday (e.g. companyname.wd1.myworkdayjobs.com/companyname)
-	wdHost := fmt.Sprintf("%s.wd1.myworkdayjobs.com", cleanName)
+	// 2. Try Workday (e.g. companyname.myworkdayjobs.com or companyname.wd1.myworkdayjobs.com)
+	wdHosts := []string{
+		fmt.Sprintf("%s.myworkdayjobs.com", cleanName),
+		fmt.Sprintf("%s.wd1.myworkdayjobs.com", cleanName),
+	}
 	siteGuesses := []string{
 		cleanName,
 		cleanName + "-careers",
 		strings.Title(cleanName),
 		strings.Title(cleanName) + "-Careers",
+		"Careers",
+		"careers",
 	}
 
-	for _, site := range siteGuesses {
-		wdURL := fmt.Sprintf("https://%s/%s/", wdHost, site)
-		req, _ := http.NewRequest("GET", wdURL, nil)
-		req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
-		if resp, err := client.Do(req); err == nil {
-			resp.Body.Close()
-			if resp.StatusCode == http.StatusOK || resp.StatusCode == http.StatusFound {
-				finalURL := resp.Request.URL.String()
-				if finalURL == "" {
-					finalURL = wdURL
-				}
-				if tc := ParseATSURL(companyName, finalURL); tc != nil {
-					return tc
+	for _, wdHost := range wdHosts {
+		for _, site := range siteGuesses {
+			wdURL := fmt.Sprintf("https://%s/%s/", wdHost, site)
+			req, _ := http.NewRequest("GET", wdURL, nil)
+			req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+			if resp, err := client.Do(req); err == nil {
+				resp.Body.Close()
+				if resp.StatusCode == http.StatusOK || resp.StatusCode == http.StatusFound {
+					finalURL := resp.Request.URL.String()
+					if finalURL == "" {
+						finalURL = wdURL
+					}
+					if tc := ParseATSURL(companyName, finalURL); tc != nil {
+						return tc
+					}
 				}
 			}
 		}
