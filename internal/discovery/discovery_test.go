@@ -1,6 +1,10 @@
 package discovery
 
 import (
+	"bytes"
+	"io"
+	"net/http"
+	"strings"
 	"testing"
 )
 
@@ -110,4 +114,84 @@ func TestParseATSURL_Greenhouse(t *testing.T) {
 			}
 		})
 	}
+}
+
+// Mock RoundTripper for intercepting HTTP calls
+type mockTransport struct {
+	roundTripFunc func(req *http.Request) (*http.Response, error)
+}
+
+func (m *mockTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	return m.roundTripFunc(req)
+}
+
+func TestSearchCompanyCareers(t *testing.T) {
+	// Keep track of the original transport
+	origTransport := discoveryRoundTripper
+	t.Cleanup(func() {
+		discoveryRoundTripper = origTransport
+	})
+
+	t.Run("Direct DDG Match Workday", func(t *testing.T) {
+		mockHTML := `<html><body>
+			<a class="result__url" href="/l/?uddg=https%3A%2F%2Fdexcom.wd1.myworkdayjobs.com%2FDexcom%2F&amp;rut=123">Careers</a>
+		</body></html>`
+
+		discoveryRoundTripper = &mockTransport{
+			roundTripFunc: func(req *http.Request) (*http.Response, error) {
+				return &http.Response{
+					StatusCode: http.StatusOK,
+					Body:       io.NopCloser(bytes.NewBufferString(mockHTML)),
+					Request:    req,
+				}, nil
+			},
+		}
+
+		target, err := SearchCompanyCareers("Dexcom")
+		if err != nil {
+			t.Fatalf("Expected no error, got: %v", err)
+		}
+		if target.Platform != "workday" || target.Tenant != "dexcom" || target.Site != "Dexcom" {
+			t.Errorf("Unexpected target details: %+v", target)
+		}
+	})
+
+	t.Run("Fallback Direct Workday Probing (Intuit)", func(t *testing.T) {
+		// Mock DDG search returning no results, but direct Workday probe succeeding
+		discoveryRoundTripper = &mockTransport{
+			roundTripFunc: func(req *http.Request) (*http.Response, error) {
+				reqURL := req.URL.String()
+				// DuckDuckGo search empty results
+				if strings.Contains(reqURL, "duckduckgo.com") {
+					return &http.Response{
+						StatusCode: http.StatusOK,
+						Body:       io.NopCloser(bytes.NewBufferString("<html><body>No results</body></html>")),
+						Request:    req,
+					}, nil
+				}
+				// Mocking successful Intuit probe
+				if strings.Contains(reqURL, "intuit.myworkdayjobs.com/Careers/") {
+					return &http.Response{
+						StatusCode: http.StatusOK,
+						Body:       io.NopCloser(bytes.NewBufferString("")),
+						Request:    req,
+					}, nil
+				}
+				// Return 404 for other probes
+				return &http.Response{
+					StatusCode: http.StatusNotFound,
+					Body:       io.NopCloser(bytes.NewBufferString("")),
+					Request:    req,
+				}, nil
+			},
+		}
+
+		target, err := SearchCompanyCareers("Intuit")
+		if err != nil {
+			t.Fatalf("Expected no error, got: %v", err)
+		}
+		if target.Platform != "workday" || target.Tenant != "intuit" || target.Site != "Careers" {
+			t.Errorf("Unexpected target details: %+v", target)
+		}
+	})
 }

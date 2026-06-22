@@ -13,6 +13,9 @@ import (
 )
 
 var (
+	// RoundTripper used for outgoing HTTP requests (overridden in tests)
+	discoveryRoundTripper http.RoundTripper = http.DefaultTransport
+
 	// Locales to strip when finding the Workday Site segment
 	locales = map[string]bool{
 		"en-us": true, "en-gb": true, "zh-cn": true, "fr-fr": true,
@@ -35,7 +38,10 @@ func SearchCompanyCareers(companyName string) (*scraper.TargetCompany, error) {
 	}
 	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
 
-	client := &http.Client{Timeout: 10 * time.Second}
+	client := &http.Client{
+		Timeout:   10 * time.Second,
+		Transport: discoveryRoundTripper,
+	}
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("search request failed: %w", err)
@@ -119,7 +125,8 @@ func inspectCustomPage(companyName, pageURL string) (*scraper.TargetCompany, err
 	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
 
 	client := &http.Client{
-		Timeout: 5 * time.Second,
+		Timeout:   5 * time.Second,
+		Transport: discoveryRoundTripper,
 		CheckRedirect: func(req *http.Request, via []*http.Request) error {
 			if len(via) >= 5 {
 				return http.ErrUseLastResponse
@@ -258,7 +265,8 @@ func probeDirectFallbacks(companyName string) *scraper.TargetCompany {
 	cleanName := strings.ToLower(reg.ReplaceAllString(companyName, ""))
 
 	client := &http.Client{
-		Timeout: 3 * time.Second,
+		Timeout:   3 * time.Second,
+		Transport: discoveryRoundTripper,
 		CheckRedirect: func(req *http.Request, via []*http.Request) error {
 			if len(via) >= 5 {
 				return http.ErrUseLastResponse
