@@ -21,6 +21,26 @@ In an era of automated HR filters and asymmetric information, openHunt provides 
 > **openHunt currently only supports Workday and Greenhouse job boards.** 
 > Custom career portals (such as Apple's proprietary system or Intuit's Radancy/Avature setup) are not supported. If a company uses a custom domain or an unsupported ATS, the discovery tool will fail to find a supported board.
 
+## Confirmed Target Companies
+
+The following companies have been successfully discovered and are confirmed in the database:
+
+| Company Name | Platform | Tenant / Identifier |
+| --- | --- | --- |
+| Adobe | Workday | `adobe` |
+| Broadcom | Workday | `broadcom` |
+| Cloudera | Workday | `cloudera` |
+| Coinbase | Greenhouse | `coinbase` |
+| Dexcom | Workday | `dexcom` |
+| Elastic | Greenhouse | `elastic` |
+| Illumina | Workday | `illumina` |
+| NVIDIA | Workday | `nvidia` |
+| Qualcomm | Workday | `qualcomm` |
+| Reddit | Greenhouse | `reddit` |
+| Salesforce | Workday | `salesforce` |
+| Sony PlayStation | Workday | `sonyglobal` |
+| Stripe | Greenhouse | `stripe` |
+
 ## Architecture
 
 The system operates as a multi-stage pipeline:
