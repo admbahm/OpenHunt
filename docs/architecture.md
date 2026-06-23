@@ -1,6 +1,6 @@
 # Architecture Overview
 
-`openHunt` is designed as a sovereign, local-first market intelligence engine. It collects listings from Workday CXS and Greenhouse job-board APIs, persists new listings to a local SQLite database, analyzes them using a local Ollama LLM, and exports structured findings to an Obsidian vault.
+`openHunt` is designed as a sovereign, local-first market intelligence engine. It collects listings from Workday CXS, Greenhouse, Lever, and Ashby job boards, persists new listings to a local SQLite database, analyzes them using a local Ollama LLM, and exports structured findings to an Obsidian vault.
 
 ## System Layout
 
@@ -9,9 +9,13 @@ graph TD
     A[Scraper Runner] -->|Target Config| B{Scraper Factory}
     B -->|workday| C[Stateful Workday Client]
     B -->|greenhouse| D[Greenhouse API Client]
+    B -->|lever| N[Lever API Client]
+    B -->|ashby| O[Ashby Public Board Client]
     C -->|GET landing page| E[Harvest Cookie / CSRF]
     C -->|Paginated POST search| F[Retrieve Job Listings]
     D -->|GET public board API| F
+    N -->|GET public postings API| F
+    O -->|GET public board pages| F
     F -->|Normalized JobListing| G[SQLite Diff Engine]
     G -->|Is job new?| H{New Job?}
     H -->|Yes| I[Sequential AI worker]

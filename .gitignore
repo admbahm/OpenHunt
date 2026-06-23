@@ -1,4 +1,5 @@
 database/openhunt.db
+.env
 .DS_Store
 *.exe
 *.exe~
@@ -6,5 +7,5 @@ database/openhunt.db
 *.so
 *.dylib
 bin/
-openhunt
+/openhunt
 Market-Insights/

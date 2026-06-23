@@ -6,6 +6,7 @@ import (
 	"log"
 	"sync"
 
+	"github.com/openhunt/openhunt/internal/config"
 	"github.com/openhunt/openhunt/internal/db"
 	"github.com/openhunt/openhunt/internal/scraper"
 	"github.com/openhunt/openhunt/internal/telemetry"
@@ -20,6 +21,10 @@ type PipelineJob struct {
 }
 
 func main() {
+	if err := config.LoadDotEnv(".env"); err != nil {
+		log.Fatalf("Failed to load .env: %v", err)
+	}
+
 	debugFlag := flag.Bool("debug", false, "Enable debug logs")
 	flag.Parse()
 	scraper.Debug = *debugFlag

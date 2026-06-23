@@ -172,6 +172,26 @@ func inspectCustomPage(companyName, pageURL string) (*scraper.TargetCompany, err
 		}
 	}
 
+	// Search body for lever boards URL
+	leverRegex := regexp.MustCompile(`jobs\.lever\.co/([^"'/ ]+)`)
+	if leverMatch := leverRegex.FindStringSubmatch(body); len(leverMatch) > 1 {
+		return &scraper.TargetCompany{
+			Name:     companyName,
+			Tenant:   leverMatch[1],
+			Platform: "lever",
+		}, nil
+	}
+
+	// Search body for ashby boards URL
+	ashbyRegex := regexp.MustCompile(`jobs\.ashbyhq\.com/([^"'/ ]+)`)
+	if ashbyMatch := ashbyRegex.FindStringSubmatch(body); len(ashbyMatch) > 1 {
+		return &scraper.TargetCompany{
+			Name:     companyName,
+			Tenant:   ashbyMatch[1],
+			Platform: "ashby",
+		}, nil
+	}
+
 	return nil, nil
 }
 
@@ -254,6 +274,44 @@ func ParseATSURL(companyName, rawURL string) *scraper.TargetCompany {
 		}
 	}
 
+	// Lever checks
+	if strings.Contains(host, "lever.co") {
+		pathParts := strings.Split(parsed.Path, "/")
+		tenant := ""
+		for _, part := range pathParts {
+			if part != "" {
+				tenant = part
+				break
+			}
+		}
+		if tenant != "" {
+			return &scraper.TargetCompany{
+				Name:     companyName,
+				Tenant:   tenant,
+				Platform: "lever",
+			}
+		}
+	}
+
+	// Ashby checks
+	if strings.Contains(host, "ashbyhq.com") {
+		pathParts := strings.Split(parsed.Path, "/")
+		tenant := ""
+		for _, part := range pathParts {
+			if part != "" {
+				tenant = part
+				break
+			}
+		}
+		if tenant != "" {
+			return &scraper.TargetCompany{
+				Name:     companyName,
+				Tenant:   tenant,
+				Platform: "ashby",
+			}
+		}
+	}
+
 	return nil
 }
 
@@ -318,6 +376,32 @@ func probeDirectFallbacks(companyName string) *scraper.TargetCompany {
 						return tc
 					}
 				}
+			}
+		}
+	}
+
+	// 3. Try Lever
+	leverURL := fmt.Sprintf("https://api.lever.co/v0/postings/%s?mode=json", cleanName)
+	if resp, err := client.Get(leverURL); err == nil {
+		resp.Body.Close()
+		if resp.StatusCode == http.StatusOK {
+			return &scraper.TargetCompany{
+				Name:     companyName,
+				Tenant:   cleanName,
+				Platform: "lever",
+			}
+		}
+	}
+
+	// 4. Try Ashby public hosted boards.
+	ashbyURL := fmt.Sprintf("https://jobs.ashbyhq.com/%s", cleanName)
+	if resp, err := client.Get(ashbyURL); err == nil {
+		resp.Body.Close()
+		if resp.StatusCode == http.StatusOK {
+			return &scraper.TargetCompany{
+				Name:     companyName,
+				Tenant:   cleanName,
+				Platform: "ashby",
 			}
 		}
 	}

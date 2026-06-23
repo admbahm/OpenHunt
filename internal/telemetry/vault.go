@@ -53,6 +53,7 @@ job_id: %s
 company: %s
 title: "%s"
 location: "%s"
+url: "%s"
 posted_at: %s
 salary_min: %d
 salary_max: %d
@@ -67,6 +68,7 @@ scraped_at: %s
 **Company:** %s
 **Location:** %s
 **Posted:** %s
+**Apply:** [%s](%s)
 
 ## Intelligence Analysis
 
@@ -78,12 +80,13 @@ scraped_at: %s
 ## Description
 
 %s
-`, job.JobID, companyName, job.Title, job.LocationsText, job.PostedOn,
+`, job.JobID, companyName, job.Title, job.LocationsText, job.ExternalPath, job.PostedOn,
 		analysis.BaseSalaryMin, analysis.BaseSalaryMax, analysis.RoleType,
 		strings.Join(quoteSlice(analysis.TechStack), ", "),
 		strings.Join(quoteSlice(analysis.RegulatoryGates), ", "),
 		time.Now().Format("2006-01-02 15:04:05"),
 		job.Title, companyName, job.LocationsText, job.PostedOn,
+		job.ExternalPath, job.ExternalPath,
 		analysis.RoleType, analysis.BaseSalaryMin, analysis.BaseSalaryMax,
 		strings.Join(analysis.TechStack, ", "),
 		strings.Join(analysis.RegulatoryGates, ", "),

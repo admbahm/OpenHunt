@@ -10,12 +10,17 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/openhunt/openhunt/internal/config"
 	"github.com/openhunt/openhunt/internal/db"
 	"github.com/openhunt/openhunt/internal/scraper"
 	"github.com/openhunt/openhunt/internal/telemetry"
 )
 
 func main() {
+	if err := config.LoadDotEnv(".env"); err != nil {
+		log.Fatalf("Failed to load .env: %v", err)
+	}
+
 	companyFlag := flag.String("company", "Illumina", "Company name")
 	titleFlag := flag.String("title", "", "Job title")
 	locationFlag := flag.String("location", "", "Job location")

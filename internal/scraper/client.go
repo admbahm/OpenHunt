@@ -18,6 +18,9 @@ import (
 type WorkdayScraper struct {
 	httpClient *http.Client
 	userAgent  string
+	maxRetries int
+	retryDelay func(attempt int) time.Duration
+	sleep      func(time.Duration)
 }
 
 // NewWorkdayScraper initializes a new WorkdayScraper with default settings.
@@ -32,6 +35,12 @@ func NewWorkdayScraper(client *http.Client) *WorkdayScraper {
 	return &WorkdayScraper{
 		httpClient: client,
 		userAgent:  "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+		maxRetries: 2,
+		retryDelay: func(attempt int) time.Duration {
+			return time.Duration(attempt)*500*time.Millisecond +
+				time.Duration(rand.Intn(250))*time.Millisecond
+		},
+		sleep: time.Sleep,
 	}
 }
 
@@ -46,6 +55,12 @@ func (c *WorkdayScraper) FetchJobs(target TargetCompany) ([]JobListing, error) {
 	req.Header.Set("User-Agent", c.userAgent)
 	req.Header.Set("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8")
 	req.Header.Set("Accept-Language", "en-US,en;q=0.9")
+	req.Header.Set("Connection", "keep-alive")
+	req.Header.Set("Sec-Fetch-Dest", "document")
+	req.Header.Set("Sec-Fetch-Mode", "navigate")
+	req.Header.Set("Sec-Fetch-Site", "none")
+	req.Header.Set("Sec-Fetch-User", "?1")
+	req.Header.Set("Upgrade-Insecure-Requests", "1")
 
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
@@ -68,7 +83,7 @@ func (c *WorkdayScraper) FetchJobs(target TargetCompany) ([]JobListing, error) {
 	return c.fetchJobsAt(targetURL, target.Name, target.Category, target.Country, target.Location)
 }
 
-func mapFacetParameter(paramName string, firstLevelDescriptor string) string {
+func mapFacetParameter(paramName, firstLevelDescriptor, facetType string) string {
 	if paramName == "locationMainGroup" {
 		switch strings.ToLower(firstLevelDescriptor) {
 		case "country":
@@ -77,6 +92,17 @@ func mapFacetParameter(paramName string, firstLevelDescriptor string) string {
 			return "locations"
 		case "region":
 			return "locationHierarchy1"
+		}
+
+		// Some Workday tenants expose locationMainGroup as a flat list instead
+		// of nesting values beneath Country, Locations, or Region headings.
+		// In that shape, the caller's requested facet type is the only reliable
+		// way to select the supported search parameter.
+		switch facetType {
+		case "country":
+			return "locationCountry"
+		case "location":
+			return "locations"
 		}
 	}
 	return paramName
@@ -95,15 +121,19 @@ func (c *WorkdayScraper) resolveFacetID(targetURL, facetType, descriptor string)
 		Offset:        0,
 		SearchText:    "",
 	}
+	u, _ := url.Parse(targetURL)
 	jsonData, _ := json.Marshal(reqPayload)
 	req, _ := http.NewRequest("POST", targetURL, bytes.NewBuffer(jsonData))
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Accept", "application/json")
+	req.Header.Set("Accept", "application/json, text/plain, */*")
+	req.Header.Set("Accept-Language", "en-US")
 	req.Header.Set("User-Agent", c.userAgent)
+	req.Header.Set("Origin", fmt.Sprintf("%s://%s", u.Scheme, u.Host))
+	req.Header.Set("Referer", targetURL)
+	req.Header.Set("X-Requested-With", "XMLHttpRequest")
 
 	// Add CSRF token from cookies if available
 	if c.httpClient.Jar != nil {
-		u, _ := url.Parse(targetURL)
 		for _, cookie := range c.httpClient.Jar.Cookies(u) {
 			if cookie.Name == "CALYPSO_CSRF_TOKEN" {
 				req.Header.Set("X-Calypso-Csrf-Token", cookie.Value)
@@ -126,14 +156,17 @@ func (c *WorkdayScraper) resolveFacetID(targetURL, facetType, descriptor string)
 		Facets []struct {
 			FacetParameter string `json:"facetParameter"`
 			Values         []struct {
-				Descriptor string `json:"descriptor"`
-				ID         string `json:"id"`
-				Values     []struct {
-					Descriptor string `json:"descriptor"`
-					ID         string `json:"id"`
-					Values     []struct {
-						Descriptor string `json:"descriptor"`
-						ID         string `json:"id"`
+				FacetParameter string `json:"facetParameter"`
+				Descriptor     string `json:"descriptor"`
+				ID             string `json:"id"`
+				Values         []struct {
+					FacetParameter string `json:"facetParameter"`
+					Descriptor     string `json:"descriptor"`
+					ID             string `json:"id"`
+					Values         []struct {
+						FacetParameter string `json:"facetParameter"`
+						Descriptor     string `json:"descriptor"`
+						ID             string `json:"id"`
 					} `json:"values"`
 				} `json:"values"`
 			} `json:"values"`
@@ -148,7 +181,7 @@ func (c *WorkdayScraper) resolveFacetID(targetURL, facetType, descriptor string)
 	relevantParams := []string{}
 	if facetType == "category" {
 		relevantParams = []string{"jobFamilyGroup", "functionalCategory"}
-	} else if facetType == "location" {
+	} else if facetType == "country" || facetType == "location" {
 		relevantParams = []string{"locations", "locationHierarchy1", "locationCountry", "locationMainGroup"}
 	}
 
@@ -167,16 +200,19 @@ func (c *WorkdayScraper) resolveFacetID(targetURL, facetType, descriptor string)
 
 		// Search for the descriptor in the specified facet parameter (supporting 3 levels of nesting)
 		for _, v := range facet.Values {
+			valueParam := nestedFacetParameter(facet.FacetParameter, v.FacetParameter)
 			if v.Descriptor == descriptor {
-				return v.ID, mapFacetParameter(facet.FacetParameter, v.Descriptor), nil
+				return v.ID, mapFacetParameter(valueParam, v.Descriptor, facetType), nil
 			}
 			for _, v2 := range v.Values {
+				valueParam2 := nestedFacetParameter(valueParam, v2.FacetParameter)
 				if v2.Descriptor == descriptor {
-					return v2.ID, mapFacetParameter(facet.FacetParameter, v.Descriptor), nil
+					return v2.ID, mapFacetParameter(valueParam2, v.Descriptor, facetType), nil
 				}
 				for _, v3 := range v2.Values {
+					valueParam3 := nestedFacetParameter(valueParam2, v3.FacetParameter)
 					if v3.Descriptor == descriptor {
-						return v3.ID, mapFacetParameter(facet.FacetParameter, v.Descriptor), nil
+						return v3.ID, mapFacetParameter(valueParam3, v.Descriptor, facetType), nil
 					}
 				}
 			}
@@ -197,16 +233,19 @@ func (c *WorkdayScraper) resolveFacetID(targetURL, facetType, descriptor string)
 		}
 
 		for _, v := range facet.Values {
+			valueParam := nestedFacetParameter(facet.FacetParameter, v.FacetParameter)
 			if strings.Contains(strings.ToLower(v.Descriptor), strings.ToLower(descriptor)) || strings.Contains(strings.ToLower(descriptor), strings.ToLower(v.Descriptor)) {
-				return v.ID, mapFacetParameter(facet.FacetParameter, v.Descriptor), nil
+				return v.ID, mapFacetParameter(valueParam, v.Descriptor, facetType), nil
 			}
 			for _, v2 := range v.Values {
+				valueParam2 := nestedFacetParameter(valueParam, v2.FacetParameter)
 				if strings.Contains(strings.ToLower(v2.Descriptor), strings.ToLower(descriptor)) || strings.Contains(strings.ToLower(descriptor), strings.ToLower(v2.Descriptor)) {
-					return v2.ID, mapFacetParameter(facet.FacetParameter, v.Descriptor), nil
+					return v2.ID, mapFacetParameter(valueParam2, v.Descriptor, facetType), nil
 				}
 				for _, v3 := range v2.Values {
+					valueParam3 := nestedFacetParameter(valueParam2, v3.FacetParameter)
 					if strings.Contains(strings.ToLower(v3.Descriptor), strings.ToLower(descriptor)) || strings.Contains(strings.ToLower(descriptor), strings.ToLower(v3.Descriptor)) {
-						return v3.ID, mapFacetParameter(facet.FacetParameter, v.Descriptor), nil
+						return v3.ID, mapFacetParameter(valueParam3, v.Descriptor, facetType), nil
 					}
 				}
 			}
@@ -216,16 +255,19 @@ func (c *WorkdayScraper) resolveFacetID(targetURL, facetType, descriptor string)
 	// Third pass: Exact match in ANY facet
 	for _, facet := range workdayResp.Facets {
 		for _, v := range facet.Values {
+			valueParam := nestedFacetParameter(facet.FacetParameter, v.FacetParameter)
 			if v.Descriptor == descriptor {
-				return v.ID, mapFacetParameter(facet.FacetParameter, v.Descriptor), nil
+				return v.ID, mapFacetParameter(valueParam, v.Descriptor, facetType), nil
 			}
 			for _, v2 := range v.Values {
+				valueParam2 := nestedFacetParameter(valueParam, v2.FacetParameter)
 				if v2.Descriptor == descriptor {
-					return v2.ID, mapFacetParameter(facet.FacetParameter, v.Descriptor), nil
+					return v2.ID, mapFacetParameter(valueParam2, v.Descriptor, facetType), nil
 				}
 				for _, v3 := range v2.Values {
+					valueParam3 := nestedFacetParameter(valueParam2, v3.FacetParameter)
 					if v3.Descriptor == descriptor {
-						return v3.ID, mapFacetParameter(facet.FacetParameter, v.Descriptor), nil
+						return v3.ID, mapFacetParameter(valueParam3, v.Descriptor, facetType), nil
 					}
 				}
 			}
@@ -235,16 +277,19 @@ func (c *WorkdayScraper) resolveFacetID(targetURL, facetType, descriptor string)
 	// Fourth pass: Partial match in ANY facet
 	for _, facet := range workdayResp.Facets {
 		for _, v := range facet.Values {
+			valueParam := nestedFacetParameter(facet.FacetParameter, v.FacetParameter)
 			if strings.Contains(strings.ToLower(v.Descriptor), strings.ToLower(descriptor)) || strings.Contains(strings.ToLower(descriptor), strings.ToLower(v.Descriptor)) {
-				return v.ID, mapFacetParameter(facet.FacetParameter, v.Descriptor), nil
+				return v.ID, mapFacetParameter(valueParam, v.Descriptor, facetType), nil
 			}
 			for _, v2 := range v.Values {
+				valueParam2 := nestedFacetParameter(valueParam, v2.FacetParameter)
 				if strings.Contains(strings.ToLower(v2.Descriptor), strings.ToLower(descriptor)) || strings.Contains(strings.ToLower(descriptor), strings.ToLower(v2.Descriptor)) {
-					return v2.ID, mapFacetParameter(facet.FacetParameter, v.Descriptor), nil
+					return v2.ID, mapFacetParameter(valueParam2, v.Descriptor, facetType), nil
 				}
 				for _, v3 := range v2.Values {
+					valueParam3 := nestedFacetParameter(valueParam2, v3.FacetParameter)
 					if strings.Contains(strings.ToLower(v3.Descriptor), strings.ToLower(descriptor)) || strings.Contains(strings.ToLower(descriptor), strings.ToLower(v3.Descriptor)) {
-						return v3.ID, mapFacetParameter(facet.FacetParameter, v.Descriptor), nil
+						return v3.ID, mapFacetParameter(valueParam3, v.Descriptor, facetType), nil
 					}
 				}
 			}
@@ -252,6 +297,13 @@ func (c *WorkdayScraper) resolveFacetID(targetURL, facetType, descriptor string)
 	}
 
 	return "", "", fmt.Errorf("descriptor '%s' not found in any facet", descriptor)
+}
+
+func nestedFacetParameter(parentParam, childParam string) string {
+	if childParam != "" {
+		return childParam
+	}
+	return parentParam
 }
 
 func (c *WorkdayScraper) fetchJobsAt(targetURL string, targetName, category, country, location string) ([]JobListing, error) {
@@ -267,7 +319,7 @@ func (c *WorkdayScraper) fetchJobsAt(targetURL string, targetName, category, cou
 
 	// Resolve Country ID
 	if country != "" && country != "All" {
-		id, param, err := c.resolveFacetID(targetURL, "location", country)
+		id, param, err := c.resolveFacetID(targetURL, "country", country)
 		if err == nil && id != "" {
 			appliedFacets[param] = append(appliedFacets[param], id)
 		}
@@ -310,30 +362,9 @@ func (c *WorkdayScraper) fetchJobsAt(targetURL string, targetName, category, cou
 			return nil, fmt.Errorf("failed to marshal request: %w", err)
 		}
 
-		req, err := http.NewRequest("POST", targetURL, bytes.NewBuffer(jsonData))
+		resp, err := c.executeSearchRequest(targetURL, jsonData, targetName, offset)
 		if err != nil {
-			return nil, fmt.Errorf("failed to create request: %w", err)
-		}
-
-		req.Header.Set("Content-Type", "application/json")
-		req.Header.Set("Accept", "application/json, text/plain, */*")
-		req.Header.Set("Accept-Language", "en-US")
-		req.Header.Set("User-Agent", c.userAgent)
-
-		// Add CSRF token from cookies if available
-		if c.httpClient.Jar != nil {
-			u, _ := url.Parse(targetURL)
-			for _, cookie := range c.httpClient.Jar.Cookies(u) {
-				if cookie.Name == "CALYPSO_CSRF_TOKEN" {
-					req.Header.Set("X-Calypso-Csrf-Token", cookie.Value)
-					break
-				}
-			}
-		}
-
-		resp, err := c.httpClient.Do(req)
-		if err != nil {
-			return nil, fmt.Errorf("request failed: %w", err)
+			return nil, err
 		}
 
 		if resp.StatusCode != http.StatusOK {
@@ -342,6 +373,7 @@ func (c *WorkdayScraper) fetchJobsAt(targetURL string, targetName, category, cou
 			log.Printf("Workday Error Status: %d", resp.StatusCode)
 			log.Printf("Workday Error Headers: %v", resp.Header)
 			log.Printf("Workday Error Body: %s", string(body))
+			log.Printf("Request Payload: %s", string(jsonData))
 			return nil, fmt.Errorf("bad status code: %d", resp.StatusCode)
 		}
 
@@ -361,6 +393,13 @@ func (c *WorkdayScraper) fetchJobsAt(targetURL string, targetName, category, cou
 
 		// Fetch descriptions for each job in the current page
 		for i := len(allListings) - len(workdayResp.JobPostings); i < len(allListings); i++ {
+			if allListings[i].ExternalPath != "" {
+				applyURL, err := buildWorkdayDetailURL(targetURL, allListings[i].ExternalPath)
+				if err == nil {
+					allListings[i].ExternalPath = applyURL
+				}
+			}
+
 			desc, err := c.fetchJobDescription(targetURL, allListings[i].ExternalPath)
 			if err != nil {
 				log.Printf("[%s] Warning: Failed to fetch description for job %s: %v", targetName, allListings[i].JobID, err)
@@ -384,21 +423,110 @@ func (c *WorkdayScraper) fetchJobsAt(targetURL string, targetName, category, cou
 	return allListings, nil
 }
 
+func (c *WorkdayScraper) executeSearchRequest(targetURL string, jsonData []byte, targetName string, offset int) (*http.Response, error) {
+	var lastErr error
+
+	for attempt := 0; attempt <= c.maxRetries; attempt++ {
+		req, err := http.NewRequest("POST", targetURL, bytes.NewReader(jsonData))
+		if err != nil {
+			return nil, fmt.Errorf("failed to create request: %w", err)
+		}
+		c.applyAPIHeaders(req, targetURL)
+
+		resp, err := c.httpClient.Do(req)
+		if err == nil && !isRetryableWorkdayStatus(resp.StatusCode) {
+			return resp, nil
+		}
+
+		if err != nil {
+			lastErr = err
+		} else {
+			lastErr = fmt.Errorf("bad status code: %d", resp.StatusCode)
+		}
+
+		if attempt == c.maxRetries {
+			if err != nil {
+				return nil, fmt.Errorf("request failed after %d attempts: %w", attempt+1, err)
+			}
+			return resp, nil
+		}
+
+		if resp != nil {
+			io.Copy(io.Discard, resp.Body)
+			resp.Body.Close()
+		}
+
+		delay := c.retryDelay(attempt + 1)
+		log.Printf(
+			"[%s] Workday request offset %d failed (%v); retrying in %s (%d/%d)...",
+			targetName,
+			offset,
+			lastErr,
+			delay,
+			attempt+1,
+			c.maxRetries,
+		)
+		c.sleep(delay)
+	}
+
+	return nil, fmt.Errorf("request failed: %w", lastErr)
+}
+
+func (c *WorkdayScraper) applyAPIHeaders(req *http.Request, targetURL string) {
+	u, _ := url.Parse(targetURL)
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "application/json, text/plain, */*")
+	req.Header.Set("Accept-Language", "en-US")
+	req.Header.Set("User-Agent", c.userAgent)
+	req.Header.Set("Origin", fmt.Sprintf("%s://%s", u.Scheme, u.Host))
+	req.Header.Set("Referer", targetURL)
+	req.Header.Set("X-Requested-With", "XMLHttpRequest")
+
+	if c.httpClient.Jar != nil {
+		for _, cookie := range c.httpClient.Jar.Cookies(u) {
+			if cookie.Name == "CALYPSO_CSRF_TOKEN" {
+				req.Header.Set("X-Calypso-Csrf-Token", cookie.Value)
+				break
+			}
+		}
+	}
+}
+
+func isRetryableWorkdayStatus(status int) bool {
+	return status == http.StatusTooManyRequests || status >= http.StatusInternalServerError
+}
+
 func (c *WorkdayScraper) fetchJobDescription(jobsEndpoint, externalPath string) (string, error) {
 	if externalPath == "" {
 		return "", nil
 	}
-	// Workday jobs endpoint usually ends in /jobs
-	// Detailed job endpoint is usually /job/externalPath
-	detailURL := strings.Replace(jobsEndpoint, "/jobs", "/job"+externalPath, 1)
+
+	detailURL, err := buildWorkdayDetailURL(jobsEndpoint, externalPath)
+	if err != nil {
+		return "", err
+	}
 
 	req, err := http.NewRequest("GET", detailURL, nil)
 	if err != nil {
 		return "", err
 	}
 
-	req.Header.Set("Accept", "application/json")
+	u, _ := url.Parse(jobsEndpoint)
+	req.Header.Set("Accept", "application/json,application/xml,text/plain,*/*")
+	req.Header.Set("Accept-Language", "en-US")
 	req.Header.Set("User-Agent", c.userAgent)
+	req.Header.Set("Referer", jobsEndpoint)
+	req.Header.Set("X-Requested-With", "XMLHttpRequest")
+
+	// Add CSRF token from cookies if available
+	if c.httpClient.Jar != nil {
+		for _, cookie := range c.httpClient.Jar.Cookies(u) {
+			if cookie.Name == "CALYPSO_CSRF_TOKEN" {
+				req.Header.Set("X-Calypso-Csrf-Token", cookie.Value)
+				break
+			}
+		}
+	}
 
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
@@ -416,4 +544,30 @@ func (c *WorkdayScraper) fetchJobDescription(jobsEndpoint, externalPath string) 
 	}
 
 	return fullJob.JobPostingInfo.JobDescription, nil
+}
+
+func buildWorkdayDetailURL(jobsEndpoint, externalPath string) (string, error) {
+	if absolute, err := url.Parse(externalPath); err == nil && absolute.IsAbs() {
+		return absolute.String(), nil
+	}
+
+	endpoint, err := url.Parse(jobsEndpoint)
+	if err != nil {
+		return "", fmt.Errorf("invalid Workday jobs endpoint: %w", err)
+	}
+
+	basePath := strings.TrimSuffix(endpoint.Path, "/jobs")
+	detailPath := externalPath
+	if !strings.HasPrefix(detailPath, "/") {
+		detailPath = "/" + detailPath
+	}
+	if !strings.HasPrefix(detailPath, "/job/") {
+		detailPath = "/job" + detailPath
+	}
+
+	endpoint.Path = strings.TrimRight(basePath, "/") + detailPath
+	endpoint.RawPath = ""
+	endpoint.RawQuery = ""
+	endpoint.Fragment = ""
+	return endpoint.String(), nil
 }

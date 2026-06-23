@@ -1,10 +1,12 @@
 package db
 
 import (
+	"database/sql"
 	"os"
 	"path/filepath"
 	"testing"
 
+	_ "github.com/ncruces/go-sqlite3/driver"
 	"github.com/openhunt/openhunt/internal/scraper"
 )
 
@@ -63,5 +65,62 @@ func TestSQLStore(t *testing.T) {
 	}
 	if isNew {
 		t.Error("Expected job NOT to be new after saving")
+	}
+}
+
+func TestNewSQLStoreMigratesLegacyJobsDescriptionColumn(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "legacy.db")
+	legacyDB, err := sql.Open("sqlite3", dbPath)
+	if err != nil {
+		t.Fatalf("open legacy database: %v", err)
+	}
+	_, err = legacyDB.Exec(`
+		CREATE TABLE jobs (
+			id TEXT PRIMARY KEY,
+			title TEXT,
+			company TEXT,
+			location TEXT,
+			url TEXT,
+			posted_at TEXT,
+			scraped_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+			salary_min INTEGER,
+			salary_max INTEGER,
+			tech_stack TEXT,
+			regulatory_gates TEXT,
+			role_type TEXT
+		);
+	`)
+	if err != nil {
+		legacyDB.Close()
+		t.Fatalf("create legacy schema: %v", err)
+	}
+	if err := legacyDB.Close(); err != nil {
+		t.Fatalf("close legacy database: %v", err)
+	}
+
+	store, err := NewSQLStore(dbPath)
+	if err != nil {
+		t.Fatalf("migrate legacy database: %v", err)
+	}
+	defer store.Close()
+
+	job := scraper.JobListing{
+		JobID:       "legacy-migration-job",
+		Title:       "Engineer",
+		Description: "Migrated description",
+	}
+	if err := store.SaveJob("Acme", job, nil); err != nil {
+		t.Fatalf("save job after migration: %v", err)
+	}
+
+	var description string
+	if err := store.db.QueryRow(
+		"SELECT description FROM jobs WHERE id = ?",
+		job.JobID,
+	).Scan(&description); err != nil {
+		t.Fatalf("read migrated description: %v", err)
+	}
+	if description != job.Description {
+		t.Fatalf("description = %q, want %q", description, job.Description)
 	}
 }

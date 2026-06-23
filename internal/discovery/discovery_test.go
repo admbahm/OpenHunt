@@ -73,6 +73,86 @@ func TestParseATSURL_Workday(t *testing.T) {
 	}
 }
 
+func TestParseATSURL_Lever(t *testing.T) {
+	tests := []struct {
+		name       string
+		company    string
+		rawURL     string
+		wantTenant string
+	}{
+		{
+			name:       "Standard Lever",
+			company:    "Datadog",
+			rawURL:     "https://jobs.lever.co/datadog",
+			wantTenant: "datadog",
+		},
+		{
+			name:       "Lever with trailing slash",
+			company:    "Datadog",
+			rawURL:     "https://jobs.lever.co/datadog/",
+			wantTenant: "datadog",
+		},
+		{
+			name:       "Lever with job id",
+			company:    "Datadog",
+			rawURL:     "https://jobs.lever.co/datadog/123-456",
+			wantTenant: "datadog",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tc := ParseATSURL(tt.company, tt.rawURL)
+			if tc == nil {
+				t.Fatalf("ParseATSURL returned nil")
+			}
+			if tc.Platform != "lever" {
+				t.Errorf("Expected platform lever, got %s", tc.Platform)
+			}
+			if tc.Tenant != tt.wantTenant {
+				t.Errorf("Expected Tenant %s, got %s", tt.wantTenant, tc.Tenant)
+			}
+		})
+	}
+}
+
+func TestParseATSURL_Ashby(t *testing.T) {
+	tests := []struct {
+		name       string
+		company    string
+		rawURL     string
+		wantTenant string
+	}{
+		{
+			name:       "Standard Ashby",
+			company:    "Sentry",
+			rawURL:     "https://jobs.ashbyhq.com/sentry",
+			wantTenant: "sentry",
+		},
+		{
+			name:       "Ashby with trailing slash",
+			company:    "Sentry",
+			rawURL:     "https://jobs.ashbyhq.com/sentry/",
+			wantTenant: "sentry",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tc := ParseATSURL(tt.company, tt.rawURL)
+			if tc == nil {
+				t.Fatalf("ParseATSURL returned nil")
+			}
+			if tc.Platform != "ashby" {
+				t.Errorf("Expected platform ashby, got %s", tc.Platform)
+			}
+			if tc.Tenant != tt.wantTenant {
+				t.Errorf("Expected Tenant %s, got %s", tt.wantTenant, tc.Tenant)
+			}
+		})
+	}
+}
+
 func TestParseATSURL_Greenhouse(t *testing.T) {
 	tests := []struct {
 		name       string
@@ -191,6 +271,54 @@ func TestSearchCompanyCareers(t *testing.T) {
 			t.Fatalf("Expected no error, got: %v", err)
 		}
 		if target.Platform != "workday" || target.Tenant != "intuit" || target.Site != "Careers" {
+			t.Errorf("Unexpected target details: %+v", target)
+		}
+	})
+
+	t.Run("Direct DDG Match Lever", func(t *testing.T) {
+		mockHTML := `<html><body>
+			<a href="/l/?uddg=https%3A%2F%2Fjobs.lever.co%2Fdatadog&amp;rut=123">Careers</a>
+		</body></html>`
+
+		discoveryRoundTripper = &mockTransport{
+			roundTripFunc: func(req *http.Request) (*http.Response, error) {
+				return &http.Response{
+					StatusCode: http.StatusOK,
+					Body:       io.NopCloser(bytes.NewBufferString(mockHTML)),
+					Request:    req,
+				}, nil
+			},
+		}
+
+		target, err := SearchCompanyCareers("Datadog")
+		if err != nil {
+			t.Fatalf("Expected no error, got: %v", err)
+		}
+		if target.Platform != "lever" || target.Tenant != "datadog" {
+			t.Errorf("Unexpected target details: %+v", target)
+		}
+	})
+
+	t.Run("Direct DDG Match Ashby", func(t *testing.T) {
+		mockHTML := `<html><body>
+			<a href="/l/?uddg=https%3A%2F%2Fjobs.ashbyhq.com%2Fsentry&amp;rut=123">Careers</a>
+		</body></html>`
+
+		discoveryRoundTripper = &mockTransport{
+			roundTripFunc: func(req *http.Request) (*http.Response, error) {
+				return &http.Response{
+					StatusCode: http.StatusOK,
+					Body:       io.NopCloser(bytes.NewBufferString(mockHTML)),
+					Request:    req,
+				}, nil
+			},
+		}
+
+		target, err := SearchCompanyCareers("Sentry")
+		if err != nil {
+			t.Fatalf("Expected no error, got: %v", err)
+		}
+		if target.Platform != "ashby" || target.Tenant != "sentry" {
 			t.Errorf("Unexpected target details: %+v", target)
 		}
 	})
