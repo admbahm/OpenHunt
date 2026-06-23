@@ -13,12 +13,12 @@ openHunt is a sovereign, local-first market intelligence engine designed to coun
 
 ## Project Overview
 
-In an era of automated HR filters and asymmetric information, openHunt provides the tools to build your own market intelligence. It targets Workday CXS and Greenhouse job-board APIs, processes the data through a local SQLite diff engine, and leverages local LLMs (via Ollama) to extract structured insights without leaking data to third-party providers.
+In an era of automated HR filters and asymmetric information, openHunt provides the tools to build your own market intelligence. It targets Workday CXS, Greenhouse, Lever, and Ashby job boards, processes the data through a local SQLite diff engine, and leverages local LLMs (via Ollama) to extract structured insights without leaking data to third-party providers.
 
 ## Supported Platforms & Limitations
 
 > [!IMPORTANT]
-> **openHunt currently only supports Workday and Greenhouse job boards.** 
+> **openHunt currently supports Workday, Greenhouse, Lever, and Ashby job boards.**
 > Custom career portals (such as Apple's proprietary system or Intuit's Radancy/Avature setup) are not supported. If a company uses a custom domain or an unsupported ATS, the discovery tool will fail to find a supported board.
 
 ## Confirmed Target Companies
@@ -45,7 +45,7 @@ The following companies have been successfully discovered and are confirmed in t
 
 The system operates as a multi-stage pipeline:
 
-1.  **Concurrent Scraper**: A high-performance Go worker pool dispatches each target to its Workday or Greenhouse backend and processes multiple companies simultaneously.
+1.  **Concurrent Scraper**: A high-performance Go worker pool dispatches each target to its configured ATS backend and processes multiple companies simultaneously.
 2.  **SQLite Diff Engine**: A local database layer that identifies new job listings by comparing incoming data against historical records, ensuring only fresh insights are processed.
 3.  **Sequential AI Pipeline**: A single-threaded queue that passes new job descriptions to a local **Ollama** instance. This stage extracts structured data (salary ranges, tech stack, regulatory requirements) using models like `llama3`.
 4.  **Obsidian Vault Export**: The final intelligence is exported as atomic Markdown files with YAML frontmatter, ready for deep analysis and indexing within an **Obsidian** vault.
@@ -82,13 +82,25 @@ For more detailed guides, see:
 2. **Setup directories**:
    The application will automatically create the `database/` and `Market-Insights/` directories on first run.
 
-3. **Run the engine**:
-   You can optionally configure the Ollama endpoint and model using environment variables:
+3. **Configure Ollama**:
+   Copy the example environment file and set the model you have installed locally:
    ```bash
-   OLLAMA_API_URL="http://localhost:11434" OLLAMA_MODEL="llama3" go run cmd/openhunt/main.go
+   cp .env.example .env
    ```
 
-4. **Analyze the results**:
+   Example `.env`:
+   ```dotenv
+   OLLAMA_API_URL="http://localhost:11434"
+   OLLAMA_MODEL="gemma4:e4b"
+   OPENHUNT_OUTPUT_DIR="Market-Insights"
+   ```
+
+4. **Run the engine**:
+   ```bash
+   go run cmd/openhunt/main.go
+   ```
+
+5. **Analyze the results**:
    Open the `Market-Insights/` folder in Obsidian to view your structured market intelligence.
 
 ### Running Tests

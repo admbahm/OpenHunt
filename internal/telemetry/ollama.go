@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"strings"
@@ -89,7 +90,12 @@ Job Description:
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("ollama returned status: %d", resp.StatusCode)
+		body, _ := io.ReadAll(io.LimitReader(resp.Body, 4<<10))
+		detail := strings.TrimSpace(string(body))
+		if detail == "" {
+			return nil, fmt.Errorf("ollama returned status: %d", resp.StatusCode)
+		}
+		return nil, fmt.Errorf("ollama returned status %d: %s", resp.StatusCode, detail)
 	}
 
 	var ollamaResp OllamaResponse

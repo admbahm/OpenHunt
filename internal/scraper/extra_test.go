@@ -16,6 +16,8 @@ func TestNewScraperFactory(t *testing.T) {
 	}{
 		{"workday", false},
 		{"greenhouse", false},
+		{"lever", false},
+		{"ashby", false},
 		{"invalid", true},
 	}
 
@@ -44,6 +46,7 @@ func TestGreenhouseScraper_FetchJobs(t *testing.T) {
 			Jobs: []struct {
 				ID       int64  `json:"id"`
 				Title    string `json:"title"`
+				Content  string `json:"content"`
 				Location struct {
 					Name string `json:"name"`
 				} `json:"location"`
@@ -53,8 +56,9 @@ func TestGreenhouseScraper_FetchJobs(t *testing.T) {
 				} `json:"departments"`
 			}{
 				{
-					ID:    123,
-					Title: "Test Job",
+					ID:      123,
+					Title:   "Test Job",
+					Content: "Test description",
 					Location: struct {
 						Name string `json:"name"`
 					}{Name: "Test Location"},
@@ -91,6 +95,9 @@ func TestGreenhouseScraper_FetchJobs(t *testing.T) {
 	if listings[0].JobID != "gh-123" {
 		t.Errorf("Expected JobID gh-123, got %s", listings[0].JobID)
 	}
+	if listings[0].Description != "Test description" {
+		t.Errorf("Expected description to be preserved, got %q", listings[0].Description)
+	}
 }
 
 func TestGreenhouseScraper_FetchJobs_LooseFiltering(t *testing.T) {
@@ -99,6 +106,7 @@ func TestGreenhouseScraper_FetchJobs_LooseFiltering(t *testing.T) {
 			Jobs: []struct {
 				ID       int64  `json:"id"`
 				Title    string `json:"title"`
+				Content  string `json:"content"`
 				Location struct {
 					Name string `json:"name"`
 				} `json:"location"`
@@ -108,8 +116,9 @@ func TestGreenhouseScraper_FetchJobs_LooseFiltering(t *testing.T) {
 				} `json:"departments"`
 			}{
 				{
-					ID:    1,
-					Title: "Stripe Eng Job 1",
+					ID:      1,
+					Title:   "Stripe Eng Job 1",
+					Content: "Remote engineering role",
 					Location: struct {
 						Name string `json:"name"`
 					}{Name: "Remote, US"},
@@ -121,8 +130,9 @@ func TestGreenhouseScraper_FetchJobs_LooseFiltering(t *testing.T) {
 					},
 				},
 				{
-					ID:    2,
-					Title: "Stripe Eng Job 2",
+					ID:      2,
+					Title:   "Stripe Eng Job 2",
+					Content: "Office engineering role",
 					Location: struct {
 						Name string `json:"name"`
 					}{Name: "San Francisco, CA"},
@@ -134,8 +144,9 @@ func TestGreenhouseScraper_FetchJobs_LooseFiltering(t *testing.T) {
 					},
 				},
 				{
-					ID:    3,
-					Title: "Stripe Sales Job",
+					ID:      3,
+					Title:   "Stripe Sales Job",
+					Content: "Remote sales role",
 					Location: struct {
 						Name string `json:"name"`
 					}{Name: "Remote"},
@@ -180,7 +191,6 @@ func TestGreenhouseScraper_FetchJobs_LooseFiltering(t *testing.T) {
 		}
 	}
 }
-
 
 func TestWorkdayScraper_ResolveFacetID(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -365,4 +375,3 @@ func TestWorkdayScraper_ResolveFacetID_LocationMainGroup(t *testing.T) {
 		t.Errorf("Expected param locations, got %s", param)
 	}
 }
-

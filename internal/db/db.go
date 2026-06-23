@@ -82,9 +82,52 @@ func (s *SQLStore) migrate() error {
 		platform TEXT DEFAULT 'workday'
 	);
 	`
-	_, err := s.db.Exec(schema)
-	if err != nil {
+	if _, err := s.db.Exec(schema); err != nil {
 		return fmt.Errorf("failed to execute migration: %w", err)
+	}
+
+	// CREATE TABLE IF NOT EXISTS does not update databases created by older
+	// versions. Apply additive migrations explicitly so existing user data can
+	// be opened by newer builds without requiring the database to be deleted.
+	if err := s.addColumnIfMissing("jobs", "description", "TEXT"); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (s *SQLStore) addColumnIfMissing(table, column, definition string) error {
+	rows, err := s.db.Query(fmt.Sprintf("PRAGMA table_info(%s)", table))
+	if err != nil {
+		return fmt.Errorf("failed to inspect %s schema: %w", table, err)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var (
+			cid        int
+			name       string
+			columnType string
+			notNull    int
+			defaultVal any
+			primaryKey int
+		)
+		if err := rows.Scan(&cid, &name, &columnType, &notNull, &defaultVal, &primaryKey); err != nil {
+			return fmt.Errorf("failed to inspect %s columns: %w", table, err)
+		}
+		if name == column {
+			return nil
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return fmt.Errorf("failed to inspect %s columns: %w", table, err)
+	}
+	if err := rows.Close(); err != nil {
+		return fmt.Errorf("failed to close %s schema inspection: %w", table, err)
+	}
+
+	if _, err := s.db.Exec(fmt.Sprintf("ALTER TABLE %s ADD COLUMN %s %s", table, column, definition)); err != nil {
+		return fmt.Errorf("failed to add %s.%s: %w", table, column, err)
 	}
 	return nil
 }
