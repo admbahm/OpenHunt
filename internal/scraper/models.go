@@ -21,6 +21,7 @@ type JobListing struct {
 	LocationsText string `json:"location"`
 	PostedOn      string `json:"posted_on"` // Standardized naming might be better but keeping consistency for now
 	ExternalPath  string `json:"url"`
+	Description   string `json:"description"`
 }
 
 // JobScraper defines the single behavioral contract for all ingestion backends
@@ -51,6 +52,7 @@ func (j *JobListing) UnmarshalJSON(data []byte) error {
 	j.LocationsText = aux.Alias.LocationsText
 	j.PostedOn = aux.Alias.PostedOn
 	j.ExternalPath = aux.Alias.ExternalPath
+	j.Description = "" // Will be populated later or via individual fetch
 
 	if aux.BulletinNumber != "" {
 		j.JobID = aux.BulletinNumber
@@ -74,4 +76,11 @@ type WorkdayRequest struct {
 	Limit         int                 `json:"limit"`
 	Offset        int                 `json:"offset"`
 	SearchText    string              `json:"searchText"`
+}
+
+// WorkdayFullJobResponse represents the response when fetching a single job's details.
+type WorkdayFullJobResponse struct {
+	JobPostingInfo struct {
+		JobDescription string `json:"jobDescription"`
+	} `json:"jobPostingInfo"`
 }

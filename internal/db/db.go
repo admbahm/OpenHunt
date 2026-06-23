@@ -64,6 +64,7 @@ func (s *SQLStore) migrate() error {
 		company TEXT,
 		location TEXT,
 		url TEXT,
+		description TEXT,
 		posted_at TEXT,
 		scraped_at DATETIME DEFAULT CURRENT_TIMESTAMP,
 		salary_min INTEGER,
@@ -191,8 +192,8 @@ func (s *SQLStore) IsJobNew(jobID string) (bool, error) {
 // SaveJob inserts a new job and its analysis into the database.
 func (s *SQLStore) SaveJob(company string, job scraper.JobListing, analysis *telemetry.AnalysisResult) error {
 	query := `
-	INSERT INTO jobs (id, title, company, location, url, posted_at, salary_min, salary_max, tech_stack, regulatory_gates, role_type)
-	VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+	INSERT INTO jobs (id, title, company, location, url, description, posted_at, salary_min, salary_max, tech_stack, regulatory_gates, role_type)
+	VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`
 	// Simple comma-separated strings for slices for now
 	var techStack, regGates string
@@ -212,6 +213,7 @@ func (s *SQLStore) SaveJob(company string, job scraper.JobListing, analysis *tel
 		company,
 		job.LocationsText,
 		job.ExternalPath,
+		job.Description,
 		job.PostedOn,
 		analysis.BaseSalaryMin,
 		analysis.BaseSalaryMax,
