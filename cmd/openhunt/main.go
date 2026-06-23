@@ -102,9 +102,7 @@ func main() {
 			fmt.Printf("Analyzing new job: %s - %s\n", pJob.Company.Name, pJob.Job.Title)
 
 			// Analyze (Ollama)
-			// Note: In a real scenario, we'd fetch the full description here.
-			// For now, we pass the title as a placeholder for description.
-			analysis, err := ollama.AnalyzeJob(pJob.Job.Title)
+			analysis, err := ollama.AnalyzeJob(pJob.Job.Description)
 			if err != nil {
 				log.Printf("AI analysis failed for job %s (falling back to empty analysis): %v", pJob.Job.JobID, err)
 				analysis = &telemetry.AnalysisResult{

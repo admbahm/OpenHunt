@@ -19,6 +19,7 @@ type GreenhouseResponse struct {
 	Jobs []struct {
 		ID       int64  `json:"id"`
 		Title    string `json:"title"`
+		Content  string `json:"content"` // Contains the full job description HTML
 		Location struct {
 			Name string `json:"name"`
 		} `json:"location"`
@@ -124,6 +125,7 @@ func (g *GreenhouseScraper) FetchJobs(target TargetCompany) ([]JobListing, error
 				Title:         ghJob.Title,
 				LocationsText: ghJob.Location.Name,
 				ExternalPath:  ghJob.AbsoluteURL,
+				Description:   ghJob.Content,
 			})
 		}
 	}

@@ -76,7 +76,8 @@ scraped_at: %s
 - **Regulatory Gates:** %s
 
 ## Description
-[Raw description or link to Workday would go here]
+
+%s
 `, job.JobID, companyName, job.Title, job.LocationsText, job.PostedOn,
 		analysis.BaseSalaryMin, analysis.BaseSalaryMax, analysis.RoleType,
 		strings.Join(quoteSlice(analysis.TechStack), ", "),
@@ -86,6 +87,7 @@ scraped_at: %s
 		analysis.RoleType, analysis.BaseSalaryMin, analysis.BaseSalaryMax,
 		strings.Join(analysis.TechStack, ", "),
 		strings.Join(analysis.RegulatoryGates, ", "),
+		job.Description,
 	)
 
 	// Write atomically using a temp file

@@ -358,6 +358,17 @@ func (c *WorkdayScraper) fetchJobsAt(targetURL string, targetName, category, cou
 		}
 
 		allListings = append(allListings, workdayResp.JobPostings...)
+
+		// Fetch descriptions for each job in the current page
+		for i := len(allListings) - len(workdayResp.JobPostings); i < len(allListings); i++ {
+			desc, err := c.fetchJobDescription(targetURL, allListings[i].ExternalPath)
+			if err != nil {
+				log.Printf("[%s] Warning: Failed to fetch description for job %s: %v", targetName, allListings[i].JobID, err)
+				continue
+			}
+			allListings[i].Description = desc
+		}
+
 		log.Printf("[%s] Fetched page offset %d/%d...", targetName, offset, total)
 
 		offset += pageSize
@@ -371,4 +382,38 @@ func (c *WorkdayScraper) fetchJobsAt(targetURL string, targetName, category, cou
 	}
 
 	return allListings, nil
+}
+
+func (c *WorkdayScraper) fetchJobDescription(jobsEndpoint, externalPath string) (string, error) {
+	if externalPath == "" {
+		return "", nil
+	}
+	// Workday jobs endpoint usually ends in /jobs
+	// Detailed job endpoint is usually /job/externalPath
+	detailURL := strings.Replace(jobsEndpoint, "/jobs", "/job"+externalPath, 1)
+
+	req, err := http.NewRequest("GET", detailURL, nil)
+	if err != nil {
+		return "", err
+	}
+
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("User-Agent", c.userAgent)
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("detail request failed with status: %d", resp.StatusCode)
+	}
+
+	var fullJob WorkdayFullJobResponse
+	if err := json.NewDecoder(resp.Body).Decode(&fullJob); err != nil {
+		return "", err
+	}
+
+	return fullJob.JobPostingInfo.JobDescription, nil
 }
