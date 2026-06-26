@@ -19,6 +19,18 @@ This roadmap outlines the planned enhancements and feature additions to openHunt
 - **Details**: Standardize timeouts, transient-status retries, exponential backoff with jitter, response body limits, and user-agent handling for Workday, Greenhouse, Lever, and Ashby.
 - **Typed errors**: Introduce errors such as `ErrRateLimited`, `ErrUnsupportedBoard`, `ErrMalformedResponse`, and `ErrTemporaryFailure` so the CLI, TUI, and logs can distinguish failure modes.
 
+### [ ] Location Normalization Layer
+- **Goal**: Standardize fragmented location strings to improve searchability and Dataview querying in Obsidian.
+- **Details**: Implement a post-processing normalization layer to map highly fragmented location strings (e.g., `San Diego, California`, `US - California - San Diego`, `3 Locations`, `USA - Remote`) to standard tags (e.g., `San Diego Metro`, `Remote`, `Multi-Location`) before exporting frontmatter.
+
+### [ ] Log Unsupported ATS Metrics to a Backlog
+- **Goal**: Capture unsupported ATS targets to prioritize which platforms to implement next.
+- **Details**: Write events of `UnsupportedATSError` to an `unsupported_targets.json` file or SQLite database table to track frequency of encountered platforms (e.g. iCIMS, BrassRing).
+
+### [ ] Obsidian Export Sanitization (Fix Output Folder Nesting)
+- **Goal**: Prevent output folder nesting issues in the Obsidian export pipeline.
+- **Details**: Ensure the output path logic sanitizes trailing subdirectories and does not duplicate output folder structures (e.g. nesting notes into `@Active/@Active` folders like `Market-Insights/@Active/@Active/Adobe - ...`).
+
 ### [ ] Stable Job Identity & Duplicate Detection
 - **Goal**: Reduce duplicate churn and protect against ATS ID drift or incomplete source data.
 - **Details**: Keep ATS IDs as the primary key where reliable, but add a secondary fingerprint derived from platform, tenant, normalized title, normalized location, and normalized apply URL.
@@ -71,6 +83,10 @@ This roadmap outlines the planned enhancements and feature additions to openHunt
 - **Goal**: Enhance accuracy and reliability of intelligence extraction even when Ollama is unavailable or misbehaving.
 - **Details**: Integrate a regex and heuristic fallback engine directly into the main pipeline. Extract salary ranges, role type, tech keywords, and regulatory gates before or after Ollama enrichment.
 - **Verification**: Add validation steps to assert that salary ranges, role classifications, and extracted lists are plausible before saving them.
+
+### [ ] Structured JSON Output from Ollama
+- **Goal**: Eliminate parsing errors by forcing structured JSON output from the local LLM.
+- **Details**: Leverage Ollama's structured JSON format support (e.g. combining the `format: "json"` option with a specific schema structure/prompt formatting) to prevent corrupt job notes caused by malformed frontmatter syntax or invalid Markdown.
 
 ### [ ] Pipeline State Tracking & Retryable Exports
 - **Goal**: Prevent SQLite records and Obsidian exports from drifting when one stage succeeds and another fails.

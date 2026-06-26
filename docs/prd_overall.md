@@ -10,8 +10,10 @@ Rather than relying on third-party job boards that sell user data and limit acce
 ## 2. Core Features & Capabilities
 
 ### 2.1 Concurrent Stateful Scraping
-- **Target Integrations**: Deep integration with modern Applicant Tracking Systems (ATS) starting with Workday (CXS endpoints) and Greenhouse.
+- **Target Integrations**: Deep integration with modern Applicant Tracking Systems (ATS) including Workday (CXS endpoints), Greenhouse, Lever, Ashby, and custom platforms (like Apple's proprietary careers API).
 - **Stateful Ingestion**: Extract cookies and CSRF tokens by performing a landing page hand-shake before requesting API endpoints to avoid bot-detection barriers.
+- **Dynamic Discovery & Custom Domains**: Support matching custom subdomains (e.g. `careers.company.com`) wrapping standard backend ATS platforms via signature-based body inspection (`inspectCustomPage`).
+- **Proactive Defensiveness**: Raise structured errors (`UnsupportedATSError`) when encountering known but unimplemented platforms (like iCIMS or BrassRing) to map scraper coverage and blind spots.
 - **Pagination support**: Loop page-by-page to guarantee that zero job listings are missed.
 - **Polite Harvesting**: Enforce delays (jittered backoffs) and configurable concurrency limits to avoid target rate-limiting.
 
