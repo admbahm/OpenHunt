@@ -134,16 +134,6 @@ func (s *SQLStore) addColumnIfMissing(table, column, definition string) error {
 
 // SeedTargets populates the target_companies table with initial data if empty.
 func (s *SQLStore) SeedTargets() error {
-	var count int
-	err := s.db.QueryRow("SELECT COUNT(*) FROM target_companies").Scan(&count)
-	if err != nil {
-		return fmt.Errorf("failed to check target_companies count: %w", err)
-	}
-
-	if count > 0 {
-		return nil
-	}
-
 	targets := []scraper.TargetCompany{
 		{
 			Name:     "Illumina",
@@ -164,6 +154,12 @@ func (s *SQLStore) SeedTargets() error {
 			Tenant:   "stripe",
 			Platform: "greenhouse",
 		},
+		{
+			Name:     "Apple",
+			Tenant:   "apple",
+			BaseURL:  "https://jobs.apple.com",
+			Platform: "apple",
+		},
 	}
 
 	tx, err := s.db.Begin()
@@ -172,7 +168,7 @@ func (s *SQLStore) SeedTargets() error {
 	}
 	defer tx.Rollback()
 
-	stmt, err := tx.Prepare("INSERT INTO target_companies (name, tenant, site, base_url, platform) VALUES (?, ?, ?, ?, ?)")
+	stmt, err := tx.Prepare("INSERT OR IGNORE INTO target_companies (name, tenant, site, base_url, platform) VALUES (?, ?, ?, ?, ?)")
 	if err != nil {
 		return err
 	}

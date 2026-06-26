@@ -13,13 +13,13 @@ openHunt is a sovereign, local-first market intelligence engine designed to coun
 
 ## Project Overview
 
-In an era of automated HR filters and asymmetric information, openHunt provides the tools to build your own market intelligence. It targets Workday CXS, Greenhouse, Lever, and Ashby job boards, processes the data through a local SQLite diff engine, and leverages local LLMs (via Ollama) to extract structured insights without leaking data to third-party providers.
+In an era of automated HR filters and asymmetric information, openHunt provides the tools to build your own market intelligence. It targets Workday CXS, Greenhouse, Lever, Ashby, and custom platforms (like Apple's proprietary search API), processes the data through a local SQLite diff engine, and leverages local LLMs (via Ollama) to extract structured insights without leaking data to third-party providers.
 
 ## Supported Platforms & Limitations
 
 > [!IMPORTANT]
-> **openHunt currently supports Workday, Greenhouse, Lever, and Ashby job boards.**
-> Custom career portals (such as Apple's proprietary system or Intuit's Radancy/Avature setup) are not supported. If a company uses a custom domain or an unsupported ATS, the discovery tool will fail to find a supported board.
+> **openHunt currently supports Workday, Greenhouse, Lever, Ashby, and Apple job boards.**
+> Other custom career portals (such as Intuit's Radancy/Avature setup) are not supported. If a company uses a custom domain or an unsupported ATS, the discovery tool will fail to find a supported board.
 
 ## Confirmed Target Companies
 
@@ -28,6 +28,7 @@ The following companies have been successfully discovered and are confirmed in t
 | Company Name | Platform | Tenant / Identifier |
 | --- | --- | --- |
 | Adobe | Workday | `adobe` |
+| Apple | Apple | `apple` |
 | Broadcom | Workday | `broadcom` |
 | Cloudera | Workday | `cloudera` |
 | Coinbase | Greenhouse | `coinbase` |

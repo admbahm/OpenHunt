@@ -2,6 +2,7 @@ package discovery
 
 import (
 	"bytes"
+	"errors"
 	"io"
 	"net/http"
 	"strings"
@@ -196,6 +197,31 @@ func TestParseATSURL_Greenhouse(t *testing.T) {
 	}
 }
 
+func TestLooksLikeAshbyJobBoard(t *testing.T) {
+	valid := `<script>window.__appData = {"jobBoard":{"jobPostings":[]}}</script>`
+	if !looksLikeAshbyJobBoard(valid) {
+		t.Fatal("expected Ashby app data to be recognized")
+	}
+
+	generic := `<html><body>Not found</body></html>`
+	if looksLikeAshbyJobBoard(generic) {
+		t.Fatal("generic HTML should not be treated as an Ashby job board")
+	}
+}
+
+func TestDetectUnsupportedATSURLBrassRing(t *testing.T) {
+	err := DetectUnsupportedATSURL("https://sjobs.brassring.com/TGNewUI/Search/Home/Home?partnerid=25539&siteid=5313")
+	if err == nil {
+		t.Fatal("expected BrassRing to be detected")
+	}
+	if !errors.Is(err, ErrUnsupportedATS) {
+		t.Fatalf("expected ErrUnsupportedATS, got %v", err)
+	}
+	if err.ATS != "brassring" {
+		t.Fatalf("ATS = %q, want brassring", err.ATS)
+	}
+}
+
 // Mock RoundTripper for intercepting HTTP calls
 type mockTransport struct {
 	roundTripFunc func(req *http.Request) (*http.Response, error)
@@ -219,6 +245,13 @@ func TestSearchCompanyCareers(t *testing.T) {
 
 		discoveryRoundTripper = &mockTransport{
 			roundTripFunc: func(req *http.Request) (*http.Response, error) {
+				if !strings.Contains(req.URL.String(), "duckduckgo.com") {
+					return &http.Response{
+						StatusCode: http.StatusNotFound,
+						Body:       io.NopCloser(bytes.NewBufferString("")),
+						Request:    req,
+					}, nil
+				}
 				return &http.Response{
 					StatusCode: http.StatusOK,
 					Body:       io.NopCloser(bytes.NewBufferString(mockHTML)),
@@ -282,6 +315,13 @@ func TestSearchCompanyCareers(t *testing.T) {
 
 		discoveryRoundTripper = &mockTransport{
 			roundTripFunc: func(req *http.Request) (*http.Response, error) {
+				if !strings.Contains(req.URL.String(), "duckduckgo.com") {
+					return &http.Response{
+						StatusCode: http.StatusNotFound,
+						Body:       io.NopCloser(bytes.NewBufferString("")),
+						Request:    req,
+					}, nil
+				}
 				return &http.Response{
 					StatusCode: http.StatusOK,
 					Body:       io.NopCloser(bytes.NewBufferString(mockHTML)),
@@ -320,6 +360,78 @@ func TestSearchCompanyCareers(t *testing.T) {
 		}
 		if target.Platform != "ashby" || target.Tenant != "sentry" {
 			t.Errorf("Unexpected target details: %+v", target)
+		}
+	})
+
+	t.Run("Direct DDG Match Unsupported BrassRing", func(t *testing.T) {
+		mockHTML := `<html><body>
+			<a href="/l/?uddg=https%3A%2F%2Fsjobs.brassring.com%2FTGNewUI%2FSearch%2FHome%2FHome%3Fpartnerid%3D25539%26siteid%3D5313&amp;rut=123">Careers</a>
+		</body></html>`
+
+		discoveryRoundTripper = &mockTransport{
+			roundTripFunc: func(req *http.Request) (*http.Response, error) {
+				if !strings.Contains(req.URL.String(), "duckduckgo.com") {
+					return &http.Response{
+						StatusCode: http.StatusNotFound,
+						Body:       io.NopCloser(bytes.NewBufferString("")),
+						Request:    req,
+					}, nil
+				}
+				return &http.Response{
+					StatusCode: http.StatusOK,
+					Body:       io.NopCloser(bytes.NewBufferString(mockHTML)),
+					Request:    req,
+				}, nil
+			},
+		}
+
+		_, err := SearchCompanyCareers("General Atomics")
+		if err == nil {
+			t.Fatal("expected unsupported ATS error")
+		}
+		if !errors.Is(err, ErrUnsupportedATS) {
+			t.Fatalf("expected ErrUnsupportedATS, got %v", err)
+		}
+	})
+
+	t.Run("Custom Page Linking Unsupported BrassRing", func(t *testing.T) {
+		searchHTML := `<html><body>
+			<a href="/l/?uddg=https%3A%2F%2Fcareers.example.com%2Fgeneral-atomics&amp;rut=123">Careers</a>
+		</body></html>`
+		careersHTML := `<html><body>
+			<a href="https://sjobs.brassring.com/TGNewUI/Search/Home/Home?partnerid=25539&amp;siteid=5313">Jobs</a>
+		</body></html>`
+
+		discoveryRoundTripper = &mockTransport{
+			roundTripFunc: func(req *http.Request) (*http.Response, error) {
+				if strings.Contains(req.URL.String(), "duckduckgo.com") {
+					return &http.Response{
+						StatusCode: http.StatusOK,
+						Body:       io.NopCloser(bytes.NewBufferString(searchHTML)),
+						Request:    req,
+					}, nil
+				}
+				if !strings.Contains(req.URL.String(), "careers.example.com") {
+					return &http.Response{
+						StatusCode: http.StatusNotFound,
+						Body:       io.NopCloser(bytes.NewBufferString("")),
+						Request:    req,
+					}, nil
+				}
+				return &http.Response{
+					StatusCode: http.StatusOK,
+					Body:       io.NopCloser(bytes.NewBufferString(careersHTML)),
+					Request:    req,
+				}, nil
+			},
+		}
+
+		_, err := SearchCompanyCareers("General Atomics")
+		if err == nil {
+			t.Fatal("expected unsupported ATS error")
+		}
+		if !errors.Is(err, ErrUnsupportedATS) {
+			t.Fatalf("expected ErrUnsupportedATS, got %v", err)
 		}
 	})
 }
