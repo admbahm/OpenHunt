@@ -19,6 +19,11 @@ func NewScraperFactory(platform string, httpClient *http.Client) (JobScraper, er
 		return &LeverScraper{Client: httpClient}, nil
 	case "ashby":
 		return &AshbyScraper{Client: httpClient}, nil
+	case "apple":
+		if httpClient == nil {
+			httpClient = http.DefaultClient
+		}
+		return &AppleScraper{Client: httpClient}, nil
 	default:
 		return nil, fmt.Errorf("unsupported scraping platform: %s", platform)
 	}

@@ -31,6 +31,9 @@ func NewWorkdayScraper(client *http.Client) *WorkdayScraper {
 			Timeout: 15 * time.Second,
 			Jar:     jar,
 		}
+	} else if client.Jar == nil {
+		jar, _ := cookiejar.New(nil)
+		client.Jar = jar
 	}
 	return &WorkdayScraper{
 		httpClient: client,

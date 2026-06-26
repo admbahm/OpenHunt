@@ -9,13 +9,47 @@ This roadmap outlines the planned enhancements and feature additions to openHunt
 - **Rate limiting**: A randomized 200–500ms delay is applied between page requests, with per-page progress logging.
 - **Reference**: See [PRD](docs/prd_pagination.md) and [Technical Design](docs/tech_design_pagination.md).
 
+### [x] Target Validation & Health Checks
+- **Status**: Completed. `cmd/validate` checks configured target companies for supported ATS metadata, scrape reachability, returned job counts, description extraction, scrape duration, warnings, and actionable errors.
+- **Usage**: Run `go run cmd/validate/main.go`, optionally filtering with `--company`, `--platform`, `--category`, `--country`, or `--location`.
+- **Output**: Prints a concise pass/warn/fail report by default and supports `--json` for machine-readable validation results.
+
+### [ ] Shared HTTP Retry, Backoff, and Typed Errors
+- **Goal**: Improve scraper resilience across all supported ATS platforms.
+- **Details**: Standardize timeouts, transient-status retries, exponential backoff with jitter, response body limits, and user-agent handling for Workday, Greenhouse, Lever, and Ashby.
+- **Typed errors**: Introduce errors such as `ErrRateLimited`, `ErrUnsupportedBoard`, `ErrMalformedResponse`, and `ErrTemporaryFailure` so the CLI, TUI, and logs can distinguish failure modes.
+
+### [ ] Stable Job Identity & Duplicate Detection
+- **Goal**: Reduce duplicate churn and protect against ATS ID drift or incomplete source data.
+- **Details**: Keep ATS IDs as the primary key where reliable, but add a secondary fingerprint derived from platform, tenant, normalized title, normalized location, and normalized apply URL.
+- **Use cases**: Detect reposts, changed ATS identifiers, missing IDs, and cross-run duplicates before invoking the AI pipeline.
+
+### [ ] Closed Job Reconciliation
+- **Goal**: Track jobs that disappear from source ATS boards and keep the Obsidian vault current.
+- **Details**: Compare active job IDs from each scrape against jobs currently marked active in SQLite, mark missing jobs as closed, and move corresponding Markdown notes from `@Active` to `@Closed`.
+- **Database changes**: Add job status fields such as `active`, `closed_at`, and `last_seen_at`.
+
 ### [ ] CLI Ingestion & Manual Override Improvements
 - **Goal**: Make it easier for users to feed manually discovered listings directly into the intelligence pipeline.
 - **Details**: Enhance the `cmd/ingest` utility to support interactive editing of extracted metadata before committing to SQLite and Obsidian.
 
+### [ ] Non-Interactive CLI Mode
+- **Goal**: Support repeatable automation, scheduled runs, and CI-style checks without requiring the TUI.
+- **Details**: Add flags for `--category`, `--country`, `--location`, `--company`, `--platform`, `--no-ai`, `--export-only`, and `--retry-failed`.
+- **Behavior**: Preserve the TUI as the default interactive mode while allowing explicit flags to bypass it.
+
+### [ ] File-Based Target Configuration
+- **Goal**: Make target company configuration easier to review, edit, and version.
+- **Details**: Support a local YAML or TOML target configuration file that can sync into SQLite, replacing the need to edit seed data in Go source for normal use.
+- **Validation**: Reuse the target validation command to verify config changes before they are persisted.
+
 ### [ ] Proxy and Rate Limit Mitigation
 - **Goal**: Protect scraper requests against IP bans, rate limits, and Cloudflare challenges.
 - **Details**: Implement user-agent rotation, proxy rotation, and randomized delays (jitter) between paginated queries.
+
+### [ ] Scraper Fixture Test Suite
+- **Goal**: Catch ATS response-shape changes and prevent regressions in normalization logic.
+- **Details**: Add saved fixture payloads/pages for Workday, Greenhouse, Lever, and Ashby, then test ID normalization, description extraction, location/category filtering, malformed responses, and error classification.
 
 ---
 
@@ -35,4 +69,15 @@ This roadmap outlines the planned enhancements and feature additions to openHunt
 
 ### [ ] Structured Extraction Fallbacks & Verification
 - **Goal**: Enhance accuracy and reliability of intelligence extraction even when Ollama is unavailable or misbehaving.
-- **Details**: Integrate the smart regex-based fallback engine directly into the main pipeline. Add verification steps to assert that salary ranges and role classifications are parsed correctly.
+- **Details**: Integrate a regex and heuristic fallback engine directly into the main pipeline. Extract salary ranges, role type, tech keywords, and regulatory gates before or after Ollama enrichment.
+- **Verification**: Add validation steps to assert that salary ranges, role classifications, and extracted lists are plausible before saving them.
+
+### [ ] Pipeline State Tracking & Retryable Exports
+- **Goal**: Prevent SQLite records and Obsidian exports from drifting when one stage succeeds and another fails.
+- **Details**: Track `analysis_status`, `vault_export_status`, `last_error`, and `updated_at` on jobs so failed analysis or export steps can be retried without re-scraping.
+- **Commands**: Add a retry path for failed analysis/export jobs.
+
+### [ ] Per-ATS Scrape Telemetry
+- **Goal**: Detect source instability and ATS-specific breakage quickly.
+- **Details**: Record last successful scrape, last error, returned job count, HTTP status, duration, and endpoint/platform metadata for each target company.
+- **Use cases**: Surface stale targets, repeated rate limits, empty scrape results, and platform-specific failures in both logs and future dashboards.

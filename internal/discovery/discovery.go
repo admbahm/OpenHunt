@@ -1,6 +1,7 @@
 package discovery
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -11,6 +12,26 @@ import (
 
 	"github.com/openhunt/openhunt/internal/scraper"
 )
+
+// ErrUnsupportedATS indicates that discovery found an ATS openHunt does not scrape yet.
+var ErrUnsupportedATS = errors.New("unsupported ATS")
+
+// UnsupportedATSError carries details about an unsupported discovered ATS.
+type UnsupportedATSError struct {
+	ATS string
+	URL string
+}
+
+func (e *UnsupportedATSError) Error() string {
+	if e.URL == "" {
+		return fmt.Sprintf("%v: %s", ErrUnsupportedATS, e.ATS)
+	}
+	return fmt.Sprintf("%v: %s at %s", ErrUnsupportedATS, e.ATS, e.URL)
+}
+
+func (e *UnsupportedATSError) Unwrap() error {
+	return ErrUnsupportedATS
+}
 
 var (
 	// RoundTripper used for outgoing HTTP requests (overridden in tests)
@@ -80,9 +101,13 @@ func SearchCompanyCareers(companyName string) (*scraper.TargetCompany, error) {
 	}
 
 	// 1. First pass: look for direct ATS URLs in the candidates
+	var unsupported *UnsupportedATSError
 	for _, rawURL := range candidateURLs {
 		if tc := ParseATSURL(companyName, rawURL); tc != nil {
 			return tc, nil
+		}
+		if detected := DetectUnsupportedATSURL(rawURL); detected != nil && unsupported == nil {
+			unsupported = detected
 		}
 	}
 
@@ -105,12 +130,21 @@ func SearchCompanyCareers(companyName string) (*scraper.TargetCompany, error) {
 
 		if tc, err := inspectCustomPage(companyName, rawURL); err == nil && tc != nil {
 			return tc, nil
+		} else if err != nil {
+			var unsupportedErr *UnsupportedATSError
+			if errors.As(err, &unsupportedErr) && unsupported == nil {
+				unsupported = unsupportedErr
+			}
 		}
 	}
 
 	// 3. Fallback: try direct platform URL probing using name guesses
 	if tc := probeDirectFallbacks(companyName); tc != nil {
 		return tc, nil
+	}
+
+	if unsupported != nil {
+		return nil, unsupported
 	}
 
 	return nil, fmt.Errorf("could not find a supported job board for %s", companyName)
@@ -192,7 +226,76 @@ func inspectCustomPage(companyName, pageURL string) (*scraper.TargetCompany, err
 		}, nil
 	}
 
+	if unsupported := DetectUnsupportedATSURL(finalURL); unsupported != nil {
+		return nil, unsupported
+	}
+	if unsupported := detectUnsupportedATSBody(body); unsupported != nil {
+		return nil, unsupported
+	}
+
 	return nil, nil
+}
+
+// DetectUnsupportedATSURL identifies ATS vendors that are known but not implemented.
+func DetectUnsupportedATSURL(rawURL string) *UnsupportedATSError {
+	if strings.Contains(strings.ToLower(rawURL), "brassring.com") {
+		return &UnsupportedATSError{
+			ATS: "brassring",
+			URL: rawURL,
+		}
+	}
+	if strings.Contains(strings.ToLower(rawURL), "icims.com") {
+		return &UnsupportedATSError{
+			ATS: "icims",
+			URL: rawURL,
+		}
+	}
+
+	parsed, err := url.Parse(rawURL)
+	if err != nil {
+		return nil
+	}
+
+	host := strings.ToLower(parsed.Host)
+	if strings.Contains(host, "brassring.com") {
+		return &UnsupportedATSError{
+			ATS: "brassring",
+			URL: rawURL,
+		}
+	}
+	if strings.Contains(host, "icims.com") {
+		return &UnsupportedATSError{
+			ATS: "icims",
+			URL: rawURL,
+		}
+	}
+	return nil
+}
+
+func detectUnsupportedATSBody(body string) *UnsupportedATSError {
+	brassringRegex := regexp.MustCompile(`https?://[^"'\s<>]*brassring\.com[^"'\s<>]*`)
+	if match := brassringRegex.FindString(body); match != "" {
+		return &UnsupportedATSError{
+			ATS: "brassring",
+			URL: strings.ReplaceAll(match, "&amp;", "&"),
+		}
+	}
+	if strings.Contains(strings.ToLower(body), "brassring.com") {
+		return &UnsupportedATSError{ATS: "brassring"}
+	}
+
+	icimsRegex := regexp.MustCompile(`https?://[^"'\s<>]*icims\.com[^"'\s<>]*`)
+	if match := icimsRegex.FindString(body); match != "" {
+		return &UnsupportedATSError{
+			ATS: "icims",
+			URL: strings.ReplaceAll(match, "&amp;", "&"),
+		}
+	}
+	if strings.Contains(strings.ToLower(body), "icims.com") || strings.Contains(body, "iCIMS") {
+		return &UnsupportedATSError{ATS: "icims"}
+	}
+
+	return nil
 }
 
 // ParseATSURL attempts to parse a URL into a TargetCompany if it's a known ATS URL format
@@ -312,6 +415,16 @@ func ParseATSURL(companyName, rawURL string) *scraper.TargetCompany {
 		}
 	}
 
+	// Apple checks
+	if strings.Contains(host, "jobs.apple.com") {
+		return &scraper.TargetCompany{
+			Name:     companyName,
+			Tenant:   "apple",
+			Platform: "apple",
+			BaseURL:  "https://jobs.apple.com",
+		}
+	}
+
 	return nil
 }
 
@@ -396,15 +509,26 @@ func probeDirectFallbacks(companyName string) *scraper.TargetCompany {
 	// 4. Try Ashby public hosted boards.
 	ashbyURL := fmt.Sprintf("https://jobs.ashbyhq.com/%s", cleanName)
 	if resp, err := client.Get(ashbyURL); err == nil {
-		resp.Body.Close()
 		if resp.StatusCode == http.StatusOK {
-			return &scraper.TargetCompany{
-				Name:     companyName,
-				Tenant:   cleanName,
-				Platform: "ashby",
+			bodyBytes, readErr := io.ReadAll(io.LimitReader(resp.Body, 1024*1024))
+			resp.Body.Close()
+			if readErr == nil && looksLikeAshbyJobBoard(string(bodyBytes)) {
+				return &scraper.TargetCompany{
+					Name:     companyName,
+					Tenant:   cleanName,
+					Platform: "ashby",
+				}
 			}
+		} else {
+			resp.Body.Close()
 		}
 	}
 
 	return nil
+}
+
+func looksLikeAshbyJobBoard(body string) bool {
+	return strings.Contains(body, "window.__appData") &&
+		strings.Contains(body, `"jobBoard"`) &&
+		strings.Contains(body, `"jobPostings"`)
 }
