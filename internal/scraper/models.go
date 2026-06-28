@@ -1,6 +1,9 @@
 package scraper
 
-import "encoding/json"
+import (
+	"encoding/json"
+	"strings"
+)
 
 // TargetCompany represents a company whose job board we want to scrape.
 type TargetCompany struct {
@@ -62,6 +65,74 @@ func (j *JobListing) UnmarshalJSON(data []byte) error {
 		j.JobID = j.ExternalPath
 	}
 	return nil
+}
+
+var usStates = map[string]bool{
+	"al": true, "ak": true, "az": true, "ar": true, "ca": true, "co": true, "ct": true, "de": true, "fl": true, "ga": true,
+	"hi": true, "id": true, "il": true, "in": true, "ia": true, "ks": true, "ky": true, "la": true, "me": true, "md": true,
+	"ma": true, "mi": true, "mn": true, "ms": true, "mo": true, "mt": true, "ne": true, "nv": true, "nh": true, "nj": true,
+	"nm": true, "ny": true, "nc": true, "nd": true, "oh": true, "ok": true, "or": true, "pa": true, "ri": true, "sc": true,
+	"sd": true, "tn": true, "tx": true, "ut": true, "vt": true, "va": true, "wa": true, "wv": true, "wi": true, "wy": true,
+}
+
+// MatchLocation matches a job location against the user's location and country filters loosely.
+func MatchLocation(jobLocation, targetLocation, targetCountry string) bool {
+	jobLocLower := strings.ToLower(jobLocation)
+
+	if targetLocation != "" && strings.ToLower(targetLocation) != "all" {
+		targetLocLower := strings.ToLower(strings.TrimSpace(targetLocation))
+
+		if strings.Contains(targetLocLower, "remote") {
+			return strings.Contains(jobLocLower, "remote")
+		}
+
+		cityPart := targetLocLower
+		if idx := strings.Index(targetLocLower, ","); idx != -1 {
+			cityPart = strings.TrimSpace(targetLocLower[:idx])
+		}
+
+		return strings.Contains(jobLocLower, cityPart)
+	}
+
+	if targetCountry != "" && strings.ToLower(targetCountry) != "all" {
+		targetCountryLower := strings.ToLower(targetCountry)
+		if strings.Contains(targetCountryLower, "united states") || strings.Contains(targetCountryLower, "usa") {
+			if strings.Contains(jobLocLower, "united states") ||
+				strings.Contains(jobLocLower, "usa") ||
+				strings.Contains(jobLocLower, "u.s.") ||
+				strings.Contains(jobLocLower, "america") {
+				return true
+			}
+			// Check for two-letter US state suffix (e.g., ", ca", ", tx")
+			parts := strings.Split(jobLocLower, ",")
+			if len(parts) > 1 {
+				lastPart := strings.TrimSpace(parts[len(parts)-1])
+				if len(lastPart) == 2 && usStates[lastPart] {
+					return true
+				}
+			}
+			// Check space-separated suffix
+			words := strings.Fields(jobLocLower)
+			if len(words) > 0 {
+				lastWord := words[len(words)-1]
+				if len(lastWord) == 2 && usStates[lastWord] {
+					return true
+				}
+			}
+			return false
+		}
+		return strings.Contains(jobLocLower, targetCountryLower)
+	}
+
+	return true
+}
+
+// MatchCategory matches a job category (department) against the user's category filter.
+func MatchCategory(jobCategory, targetCategory string) bool {
+	if targetCategory == "" || strings.ToLower(targetCategory) == "all" {
+		return true
+	}
+	return strings.Contains(strings.ToLower(jobCategory), strings.ToLower(targetCategory))
 }
 
 // WorkdayResponse represents the top-level structure of the Workday CXS API response.

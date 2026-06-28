@@ -27,7 +27,7 @@ graph TD
 
 ## 1. ATS Scraping Clients (`internal/scraper`)
 
-The scraper factory selects a backend from each target company's `platform`. Both backends normalize their responses into the shared `JobListing` model.
+The scraper factory selects a backend from each target company's `platform`. Backends normalize their responses into the shared `JobListing` model.
 
 Workday job boards require a stateful session to prevent CSRF exploits and verify web browser authenticity. The Workday client uses a Go `cookiejar` and splits execution into two phases:
 
@@ -37,6 +37,16 @@ Workday job boards require a stateful session to prevent CSRF exploits and verif
 The Workday client resolves dynamic facet IDs, remaps location facets as required, and paginates through every result page with a jittered delay.
 
 The Greenhouse client reads the public boards API and applies normalized category, country, and location filters. Remote matching is intentionally relaxed to support values such as `Remote, US`.
+
+The Lever and Ashby clients read public postings APIs or scrape public boards to extract job details and normalize them.
+
+Apple's proprietary careers platform uses custom API integrations specifically tailored to parse Apple's custom JSON responses.
+
+### Target Discovery & Proactive Defensiveness
+
+To dynamically resolve company careers pages, the tool includes a discovery system (`internal/discovery`):
+- **Signature-Based Inspection**: In `inspectCustomPage`, openHunt performs body regex matching and examines final redirected URLs for known ATS markers (Workday, Greenhouse, Lever, and Ashby). This allows the tool to successfully scrape custom subdomains (e.g., `careers.company.com`) wrapping standard backends.
+- **Proactive Defensiveness (Unsupported ATS Detection)**: When the discovery tool detects a known platform that is not yet implemented (such as **iCIMS** or **BrassRing**), it throws an `UnsupportedATSError` instead of failing silently. This helps map crawler blind spots and identify target coverage gaps.
 
 ## 2. SQLite Diff Engine (`internal/db`)
 

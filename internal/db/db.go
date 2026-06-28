@@ -185,7 +185,7 @@ func (s *SQLStore) SeedTargets() error {
 
 // GetTargets retrieves all target companies from the database.
 func (s *SQLStore) GetTargets() ([]scraper.TargetCompany, error) {
-	rows, err := s.db.Query("SELECT name, tenant, site, base_url, platform FROM target_companies")
+	rows, err := s.db.Query("SELECT name, tenant, COALESCE(site, ''), COALESCE(base_url, ''), platform FROM target_companies")
 	if err != nil {
 		return nil, err
 	}

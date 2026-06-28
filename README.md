@@ -19,7 +19,8 @@ In an era of automated HR filters and asymmetric information, openHunt provides 
 
 > [!IMPORTANT]
 > **openHunt currently supports Workday, Greenhouse, Lever, Ashby, and Apple job boards.**
-> Other custom career portals (such as Intuit's Radancy/Avature setup) are not supported. If a company uses a custom domain or an unsupported ATS, the discovery tool will fail to find a supported board.
+> The tool includes a discovery system that handles signature-based HTML body inspection for custom company domains (e.g. `careers.company.com`) that wrap standard backends. 
+> Known but unimplemented platforms (like iCIMS and BrassRing) are actively detected during discovery, raising an `UnsupportedATSError` rather than failing silently. Other custom career portals (such as Intuit's Radancy/Avature setup) are not supported.
 
 ## Confirmed Target Companies
 

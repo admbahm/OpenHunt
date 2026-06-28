@@ -78,45 +78,14 @@ func (g *GreenhouseScraper) FetchJobs(target TargetCompany) ([]JobListing, error
 		}
 		jobDepartment := strings.Join(depNames, ", ")
 
-		if targetCategory != "" && strings.ToLower(targetCategory) != "all" {
-			if !strings.Contains(strings.ToLower(jobDepartment), strings.ToLower(targetCategory)) {
-				categoryMatched = false
-				if Debug {
-					log.Printf("Skipping %s due to category mismatch: %s (expected %s)", ghJob.Title, jobDepartment, targetCategory)
-				}
-			}
+		categoryMatched = MatchCategory(jobDepartment, targetCategory)
+		if !categoryMatched && Debug {
+			log.Printf("Skipping %s due to category mismatch: %s (expected %s)", ghJob.Title, jobDepartment, targetCategory)
 		}
 
-		// Location Check
-		locationMatched := true
-		jobLocationLower := strings.ToLower(ghJob.Location.Name)
-		if targetLocation != "" && strings.ToLower(targetLocation) != "all" {
-			targetLocLower := strings.ToLower(strings.TrimSpace(targetLocation))
-			if strings.Contains(targetLocLower, "remote") {
-				// If the filter mentions "remote" anywhere, use a relaxed substring
-				// check so that job locations like "Remote, US" or "Remote" all match.
-				if !strings.Contains(jobLocationLower, "remote") {
-					locationMatched = false
-					if Debug {
-						log.Printf("Skipping %s due to location mismatch: %s (expected remote)", ghJob.Title, ghJob.Location.Name)
-					}
-				}
-			} else {
-				if !strings.Contains(jobLocationLower, targetLocLower) {
-					locationMatched = false
-					if Debug {
-						log.Printf("Skipping %s due to location mismatch: %s (expected %s)", ghJob.Title, ghJob.Location.Name, targetLocation)
-					}
-				}
-			}
-		} else if targetCountry != "" && strings.ToLower(targetCountry) != "all" {
-			targetCountryLower := strings.ToLower(targetCountry)
-			if !strings.Contains(jobLocationLower, targetCountryLower) {
-				locationMatched = false
-				if Debug {
-					log.Printf("Skipping %s due to location mismatch: %s (expected country %s)", ghJob.Title, ghJob.Location.Name, targetCountry)
-				}
-			}
+		locationMatched := MatchLocation(ghJob.Location.Name, targetLocation, targetCountry)
+		if !locationMatched && Debug {
+			log.Printf("Skipping %s due to location mismatch: %s (expected %s / country %s)", ghJob.Title, ghJob.Location.Name, targetLocation, targetCountry)
 		}
 
 		if categoryMatched && locationMatched {
