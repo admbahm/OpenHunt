@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 )
 
 type LeverScraper struct {
@@ -13,9 +14,13 @@ type LeverScraper struct {
 
 type LeverResponse []struct {
 	ID         string `json:"id"`
-	Title      string `json:"title"`
+	Title      string `json:"title"` // Fallback if they ever send "title"
+	Text       string `json:"text"`  // This is the actual job title from Lever
 	Categories struct {
-		Team string `json:"team"`
+		Department string   `json:"department"`
+		Team       string   `json:"team"`
+		Location   string   `json:"location"`
+		AllLocations []string `json:"allLocations"`
 	} `json:"categories"`
 	WorkplaceType string `json:"workplaceType"`
 	HostedURL     string `json:"hostedUrl"`
@@ -26,6 +31,10 @@ func (s *LeverScraper) FetchJobs(target TargetCompany) ([]JobListing, error) {
 	if s.Client == nil {
 		s.Client = http.DefaultClient
 	}
+
+	targetCategory := stripNumericPrefix(target.Category)
+	targetLocation := stripNumericPrefix(target.Location)
+	targetCountry := stripNumericPrefix(target.Country)
 
 	baseURL := s.BaseURL
 	if baseURL == "" {
@@ -55,10 +64,55 @@ func (s *LeverScraper) FetchJobs(target TargetCompany) ([]JobListing, error) {
 
 	var listings []JobListing
 	for _, job := range leverResp {
+		title := job.Title
+		if title == "" {
+			title = job.Text
+		}
+
+		// Department matching
+		deptParts := []string{}
+		if job.Categories.Department != "" {
+			deptParts = append(deptParts, job.Categories.Department)
+		}
+		if job.Categories.Team != "" && job.Categories.Team != job.Categories.Department {
+			deptParts = append(deptParts, job.Categories.Team)
+		}
+		jobDept := strings.Join(deptParts, ", ")
+
+		categoryMatched := MatchCategory(jobDept, targetCategory)
+
+		// Location matching
+		locParts := []string{}
+		if len(job.Categories.AllLocations) > 0 {
+			locParts = append(locParts, job.Categories.AllLocations...)
+		} else if job.Categories.Location != "" {
+			locParts = append(locParts, job.Categories.Location)
+		}
+		if job.WorkplaceType != "" {
+			// Avoid duplicates
+			found := false
+			for _, l := range locParts {
+				if strings.EqualFold(l, job.WorkplaceType) {
+					found = true
+					break
+				}
+			}
+			if !found {
+				locParts = append(locParts, job.WorkplaceType)
+			}
+		}
+		jobLoc := strings.Join(locParts, ", ")
+
+		locationMatched := MatchLocation(jobLoc, targetLocation, targetCountry)
+
+		if !categoryMatched || !locationMatched {
+			continue
+		}
+
 		listings = append(listings, JobListing{
 			JobID:         fmt.Sprintf("lever-%s", job.ID),
-			Title:         job.Title,
-			LocationsText: job.WorkplaceType, // Lever often puts remote/hybrid here or in a separate location field
+			Title:         title,
+			LocationsText: jobLoc,
 			ExternalPath:  job.HostedURL,
 			Description:   job.Description,
 		})

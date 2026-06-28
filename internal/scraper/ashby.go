@@ -206,25 +206,8 @@ func (s *AshbyScraper) FetchJobs(target TargetCompany) ([]JobListing, error) {
 		department := ashbyJobDepartment(job)
 		location := ashbyJobLocation(job)
 
-		categoryMatched := true
-		if targetCategory != "" && strings.ToLower(targetCategory) != "all" {
-			if !strings.Contains(strings.ToLower(department), strings.ToLower(targetCategory)) {
-				categoryMatched = false
-			}
-		}
-
-		locationMatched := true
-		locationLower := strings.ToLower(location)
-		if targetLocation != "" && strings.ToLower(targetLocation) != "all" {
-			targetLocLower := strings.ToLower(strings.TrimSpace(targetLocation))
-			if strings.Contains(targetLocLower, "remote") {
-				locationMatched = strings.Contains(locationLower, "remote")
-			} else {
-				locationMatched = strings.Contains(locationLower, targetLocLower)
-			}
-		} else if targetCountry != "" && strings.ToLower(targetCountry) != "all" {
-			locationMatched = strings.Contains(locationLower, strings.ToLower(targetCountry))
-		}
+		categoryMatched := MatchCategory(department, targetCategory)
+		locationMatched := MatchLocation(location, targetLocation, targetCountry)
 
 		if !categoryMatched || !locationMatched {
 			continue

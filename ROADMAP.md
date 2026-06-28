@@ -67,6 +67,10 @@ This roadmap outlines the planned enhancements and feature additions to openHunt
 
 ## User Interface (UI) Development
 
+### [ ] Configurable TUI Dropdown Filter Options
+- **Goal**: Allow users to configure the Category, Country, and Location options displayed in the Bubble Tea TUI.
+- **Details**: Support loading these options dynamically from a local configuration file (YAML/TOML) or by querying the unique values populated in the target database.
+
 ### [ ] Local Web Dashboard
 - **Goal**: Provide a clean, premium graphical user interface to visualize scraped jobs, salary trends, and stack distributions.
 - **Tech Stack**: Next.js, Tailwind CSS (configured for modern dark mode aesthetics), and SQLite backend.

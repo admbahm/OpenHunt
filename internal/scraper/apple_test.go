@@ -161,3 +161,76 @@ func TestAppleScraperStatusError(t *testing.T) {
 		t.Fatalf("unexpected error message: %v", err)
 	}
 }
+
+func TestAppleScraperWithLocationFilter(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/en-us/search":
+			w.Header().Add("Set-Cookie", "jobs=mock-jobs")
+			w.WriteHeader(http.StatusOK)
+		case "/api/v1/CSRFToken":
+			w.Header().Set("X-Apple-CSRF-Token", "mock-csrf")
+			w.WriteHeader(http.StatusOK)
+		case "/api/v1/refData/postlocation":
+			if r.URL.Query().Get("input") != "San Diego" {
+				t.Fatalf("autocomplete: input = %q, want San Diego", r.URL.Query().Get("input"))
+			}
+			w.Header().Set("Content-Type", "application/json")
+			fmt.Fprint(w, `{"res":[{"id":"postLocation-SDO","name":"San Diego, CA","city":"San Diego","stateProvince":"California"}]}`)
+		case "/api/v1/search":
+			var payload map[string]interface{}
+			if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+				t.Fatalf("failed to decode search payload: %v", err)
+			}
+			filters, _ := payload["filters"].(map[string]interface{})
+			locations, _ := filters["locations"].([]interface{})
+			if len(locations) != 1 || locations[0].(string) != "postLocation-SDO" {
+				t.Fatalf("search payload locations = %v, want [postLocation-SDO]", locations)
+			}
+			w.Header().Set("Content-Type", "application/json")
+			fmt.Fprint(w, `{
+				"res": {
+					"totalRecords": 1,
+					"searchResults": [
+						{
+							"id": "200669114",
+							"postingTitle": "Software Engineer",
+							"postingDate": "Jun 28, 2026",
+							"positionId": "200669114",
+							"locations": [
+								{
+									"name": "San Diego",
+									"city": "San Diego",
+									"stateProvince": "CA",
+									"countryName": "United States of America",
+									"countryID": "iso-country-USA"
+								}
+							]
+						}
+					]
+				}
+			}`)
+		default:
+			t.Fatalf("unexpected request: %q", r.URL.Path)
+		}
+	}))
+	defer server.Close()
+
+	scraper := &AppleScraper{Client: server.Client(), BaseURL: server.URL}
+	jobs, err := scraper.FetchJobs(TargetCompany{
+		Platform: "apple",
+		Category: "Software",
+		Location: "San Diego, California",
+		Country:  "USA",
+	})
+	if err != nil {
+		t.Fatalf("FetchJobs failed: %v", err)
+	}
+
+	if len(jobs) != 1 {
+		t.Fatalf("expected 1 job, got %d", len(jobs))
+	}
+	if jobs[0].LocationsText != "San Diego, CA (United States of America)" {
+		t.Fatalf("LocationsText = %q", jobs[0].LocationsText)
+	}
+}

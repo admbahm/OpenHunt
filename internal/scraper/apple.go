@@ -8,6 +8,7 @@ import (
 	"log"
 	"math/rand"
 	"net/http"
+	"net/url"
 	"regexp"
 	"strings"
 	"time"
@@ -151,6 +152,79 @@ func (a *AppleScraper) getCountryISOCode(country string) string {
 	return "USA"
 }
 
+// resolveLocationID queries Apple's location suggestions API to find the exact postLocation- ID.
+func (a *AppleScraper) resolveLocationID(baseURL string, targetLocation string, defaultLocationFilter string) string {
+	if targetLocation == "" || strings.EqualFold(targetLocation, "all") || strings.Contains(strings.ToLower(targetLocation), "remote") {
+		return defaultLocationFilter
+	}
+
+	// Extract city part and state part
+	cityPart := targetLocation
+	statePart := ""
+	if idx := strings.Index(targetLocation, ","); idx != -1 {
+		cityPart = strings.TrimSpace(targetLocation[:idx])
+		statePart = strings.TrimSpace(targetLocation[idx+1:])
+	}
+
+	urlStr := fmt.Sprintf("%s/api/v1/refData/postlocation?input=%s", strings.TrimRight(baseURL, "/"), url.QueryEscape(cityPart))
+	req, err := http.NewRequest("GET", urlStr, nil)
+	if err != nil {
+		return defaultLocationFilter
+	}
+	req.Header.Set("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)")
+	req.Header.Set("Accept", "application/json, text/plain, */*")
+
+	resp, err := a.Client.Do(req)
+	if err != nil {
+		return defaultLocationFilter
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return defaultLocationFilter
+	}
+
+	var suggestionsResp struct {
+		Res []struct {
+			ID            string `json:"id"`
+			Name          string `json:"name"`
+			City          string `json:"city"`
+			StateProvince string `json:"stateProvince"`
+		} `json:"res"`
+	}
+
+	if err := json.NewDecoder(resp.Body).Decode(&suggestionsResp); err != nil {
+		return defaultLocationFilter
+	}
+
+	if len(suggestionsResp.Res) == 0 {
+		return defaultLocationFilter
+	}
+
+	// First pass: try to find a match that matches both city and state if statePart is provided
+	if statePart != "" {
+		for _, item := range suggestionsResp.Res {
+			if strings.EqualFold(item.City, cityPart) && (strings.EqualFold(item.StateProvince, statePart) || strings.Contains(strings.ToLower(item.Name), strings.ToLower(statePart))) {
+				return item.ID
+			}
+		}
+		for _, item := range suggestionsResp.Res {
+			if strings.Contains(strings.ToLower(item.Name), strings.ToLower(cityPart)) && strings.Contains(strings.ToLower(item.Name), strings.ToLower(statePart)) {
+				return item.ID
+			}
+		}
+	}
+
+	// Second pass: return the first item that contains the cityPart in name
+	for _, item := range suggestionsResp.Res {
+		if strings.Contains(strings.ToLower(item.Name), strings.ToLower(cityPart)) {
+			return item.ID
+		}
+	}
+
+	// Fallback to the first suggestion
+	return suggestionsResp.Res[0].ID
+}
 
 func (a *AppleScraper) FetchJobs(target TargetCompany) ([]JobListing, error) {
 	targetCategory := stripNumericPrefix(target.Category)
@@ -217,6 +291,9 @@ func (a *AppleScraper) FetchJobs(target TargetCompany) ([]JobListing, error) {
 	}
 
 	locationFilter := a.getCountryLocationID(targetCountry)
+	if targetLocation != "" && !strings.EqualFold(targetLocation, "all") {
+		locationFilter = a.resolveLocationID(baseURL, targetLocation, locationFilter)
+	}
 
 	var listings []JobListing
 	page := 1
@@ -295,39 +372,16 @@ func (a *AppleScraper) FetchJobs(target TargetCompany) ([]JobListing, error) {
 				}
 			}
 
-			// Apply location checks
-			locMatched := true
-			if targetLocation != "" && !strings.EqualFold(targetLocation, "all") {
-				targetLocLower := strings.ToLower(strings.TrimSpace(targetLocation))
-				var locNames []string
-				for _, loc := range job.Locations {
-					locNames = append(locNames, strings.ToLower(loc.Name), strings.ToLower(loc.City))
-				}
-				locsStr := strings.Join(locNames, " ")
-
-				if strings.Contains(targetLocLower, "remote") {
-					if !strings.Contains(locsStr, "remote") && !job.HomeOffice {
-						locMatched = false
-					}
-				} else {
-					if !strings.Contains(locsStr, targetLocLower) {
-						locMatched = false
-					}
-				}
-			} else if targetCountry != "" && !strings.EqualFold(targetCountry, "all") {
-				targetCountryISO := a.getCountryISOCode(targetCountry)
-				countryMatchedForJob := false
-				for _, loc := range job.Locations {
-					if strings.Contains(strings.ToUpper(loc.CountryID), targetCountryISO) ||
-						strings.Contains(strings.ToLower(loc.CountryName), strings.ToLower(targetCountry)) {
-						countryMatchedForJob = true
-						break
-					}
-				}
-				if !countryMatchedForJob {
-					locMatched = false
-				}
+			var locNames []string
+			for _, loc := range job.Locations {
+				locNames = append(locNames, loc.Name, loc.City, loc.State, loc.CountryName)
 			}
+			jobLoc := strings.Join(locNames, ", ")
+			if job.HomeOffice {
+				jobLoc += ", remote"
+			}
+
+			locMatched := MatchLocation(jobLoc, targetLocation, targetCountry)
 
 			if categoryMatched && locMatched {
 				var locTexts []string
